@@ -1,0 +1,35 @@
+name: Feature or task
+description: New functionality or technical work, in the same shape as a board card.
+labels: [enhancement]
+body:
+  - type: input
+    id: card
+    attributes:
+      label: Card ID
+      placeholder: e.g. CP-004
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why is this needed?
+    validations:
+      required: true
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: What should be true when this is done?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      value: |
+        - [ ]
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
