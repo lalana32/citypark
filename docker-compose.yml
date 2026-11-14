@@ -1,0 +1,26 @@
+# Local development infrastructure for CityPark.
+# Usage: see "Local database" in README.md.
+name: citypark
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-citypark}
+      POSTGRES_USER: ${POSTGRES_USER:-citypark}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-citypark}
+    ports:
+      # Bound to loopback only: the database is not reachable from the local network.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # $$ escapes Compose interpolation, so the variables are resolved inside the container.
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  postgres-data:
