@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CityPark.Api/CityPark.Api.csproj" />
+    <Project Path="src/CityPark.Application/CityPark.Application.csproj" />
+    <Project Path="src/CityPark.Domain/CityPark.Domain.csproj" />
+    <Project Path="src/CityPark.Infrastructure/CityPark.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CityPark.Api.Tests/CityPark.Api.Tests.csproj" />
+    <Project Path="tests/CityPark.Application.Tests/CityPark.Application.Tests.csproj" />
+    <Project Path="tests/CityPark.Domain.Tests/CityPark.Domain.Tests.csproj" />
+    <Project Path="tests/CityPark.Infrastructure.Tests/CityPark.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>
