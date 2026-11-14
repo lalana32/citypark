@@ -1,0 +1,24 @@
+# Dependabot opens PRs for outdated dependencies; each one has to pass CI like any other PR.
+# npm is added together with the frontend (no package.json exists yet).
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      # Test tooling is released together, so it is updated in one PR.
+      test-tooling:
+        patterns:
+          - xunit*
+          - Microsoft.NET.Test.Sdk
+          - coverlet.*
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci(deps)
