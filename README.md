@@ -2,9 +2,10 @@
 
 [![CI](https://github.com/lalana32/citypark/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/lalana32/citypark/actions/workflows/ci.yml)
 
-Modular monolith built on .NET 10.
+Layered monolith built on .NET 10 (see [ADR-001](docs/adr/0001-monolith-with-four-projects.md)).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch, commit and pull request workflow.
+Architecture decisions are recorded in the [ADR index](docs/adr/README.md).
 
 ## Solution layout
 
