@@ -52,10 +52,11 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
+      # global.json selects Microsoft.Testing.Platform; a run that finds zero tests fails (exit code 8).
       - name: Test
         run: >
           dotnet test --no-build --configuration Release
-          --logger trx --results-directory TestResults
+          --report-xunit-trx --results-directory TestResults
 
       - name: Upload test results
         if: ${{ !cancelled() }}
