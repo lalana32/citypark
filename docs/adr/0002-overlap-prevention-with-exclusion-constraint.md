@@ -97,3 +97,63 @@ and the interval is no longer one value. It would work on any database, which is
   this is negligible.
 - The constraint covers overlap only. R10 (at most 10 active reservations per user) is still
   checked in application code and can be exceeded by one under simultaneous requests.
+
+## Validation
+
+Validated in CP-007 (2026-11-16) against PostgreSQL 17 with EF Core 10.0.4 and Npgsql 10.0.3.
+The work was done in the project itself instead of a throwaway prototype, and the tests stay as
+regression tests for the constraint.
+
+**Schema.** The `InitialCreate` migration creates the space constraint. `btree_gist` is declared
+in the model with `modelBuilder.HasPostgresExtension("btree_gist")`, so EF Core generates
+`CREATE EXTENSION IF NOT EXISTS btree_gist;` before the tables. The constraint is raw SQL in the
+same migration:
+
+```sql
+ALTER TABLE reservations
+  ADD CONSTRAINT ex_reservations_space_no_overlap
+  EXCLUDE USING gist (
+    space_id WITH =,
+    tstzrange(start_time, end_time, '[)') WITH &&
+  ) WHERE (status = 1);
+```
+
+`start_time` and `end_time` map to `timestamp with time zone`, which `tstzrange` requires. The
+plate constraint is not created yet, because the reservation has no plate column so far.
+
+**Exception chain.** A rejected insert surfaces in .NET as:
+
+```text
+DbUpdateException
+  └─ InnerException: Npgsql.PostgresException
+       SqlState       = "23P01"   (PostgresErrorCodes.ExclusionViolation)
+       ConstraintName = "ex_reservations_space_no_overlap"
+```
+
+The application identifies the conflict by `SqlState` and `ConstraintName`, never by the message
+text. `ConstraintName` is what will tell the space constraint apart from the plate constraint.
+Npgsql hides the `DETAIL` part (the conflicting key values) unless the connection string sets
+`Include Error Detail=true`, because those values may contain personal data such as a plate.
+
+**Results.** The tests are in
+`tests/CityPark.Infrastructure.Tests/Persistence/ReservationOverlapConstraintTests.cs`:
+
+| Scenario (same day, UTC) | Result |
+| --- | --- |
+| Space A Active `[10:00,12:00)`, then space A Active `[11:00,13:00)` | second insert fails, `23P01` |
+| Space A Active `[10:00,11:00)`, then space A Active `[11:00,12:00)` | both succeed |
+| Space A Active `[10:00,12:00)`, then space A **Cancelled** `[11:00,13:00)` | both succeed |
+| Space A Active `[10:00,12:00)`, then space **B** Active `[10:00,12:00)` | both succeed |
+
+**Lessons for later work.**
+
+- Tests that rely on the constraint must build the schema with `Database.Migrate()`.
+  `EnsureCreated()` builds the schema from the model only and silently skips the raw SQL
+  constraint.
+- Each insert uses its own `DbContext`. After a failed `SaveChanges` the entity stays tracked,
+  and a later `SaveChanges` on the same context would send it again. The retry with the next
+  candidate space has to account for this.
+- The integration tests start a disposable `postgres:17` container with Testcontainers, so they
+  need a running Docker engine. With Docker Engine inside WSL and `dotnet` on Windows, the daemon
+  must also listen on `tcp://127.0.0.1:2375`, and `DOCKER_HOST=tcp://localhost:2375` must be set
+  on Windows. CI (`ubuntu-latest`) needs no extra setup.
