@@ -2,6 +2,9 @@ using CityPark.Domain.Common;
 
 namespace CityPark.Domain.Reservations;
 
+/// <summary>
+/// Immutable UTC time interval [Start, End): start is included, end is not.
+/// </summary>
 public sealed record TimeInterval
 {
     public TimeInterval(DateTimeOffset start, DateTimeOffset end)
