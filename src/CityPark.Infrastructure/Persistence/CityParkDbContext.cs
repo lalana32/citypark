@@ -11,6 +11,10 @@ public sealed class CityParkDbContext(DbContextOptions<CityParkDbContext> option
 
     public DbSet<Reservation> Reservations => Set<Reservation>();
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // btree_gist lets a GiST index compare space_id with "=" in the no-overlap exclusion constraint.
+        modelBuilder.HasPostgresExtension("btree_gist");
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(CityParkDbContext).Assembly);
+    }
 }
