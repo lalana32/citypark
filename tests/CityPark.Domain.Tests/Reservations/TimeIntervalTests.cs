@@ -104,4 +104,64 @@ public class TimeIntervalTests
 
         Assert.False(interval.Contains(At(12)));
     }
+
+    [Fact]
+    public void Contains_AtStart_ReturnsTrue()
+    {
+        var interval = new TimeInterval(At(10), At(11));
+
+        Assert.True(interval.Contains(At(10)));
+    }
+
+    [Fact]
+    public void Contains_AtEnd_ReturnsFalse()
+    {
+        var interval = new TimeInterval(At(10), At(11));
+
+        Assert.False(interval.Contains(At(11)));
+    }
+
+    [Fact]
+    public void Constructor_WithOneTickInterval_IsValid()
+    {
+        var start = At(10);
+
+        var interval = new TimeInterval(start, start.AddTicks(1));
+
+        Assert.Equal(TimeSpan.FromTicks(1), interval.Duration);
+    }
+
+    [Fact]
+    public void Overlaps_WhenIntervalsShareOnlyOneTick_ReturnsTrue()
+    {
+        var first = new TimeInterval(At(10), At(11).AddTicks(1));
+        var second = new TimeInterval(At(11), At(12));
+
+        Assert.True(first.Overlaps(second));
+    }
+
+    [Theory]
+    [InlineData(10, 11, 11, 12, false)]
+    [InlineData(10, 11, 12, 13, false)]
+    [InlineData(10, 12, 11, 13, true)]
+    [InlineData(10, 13, 11, 12, true)]
+    public void Overlaps_IsSymmetric(int firstStart, int firstEnd, int secondStart, int secondEnd, bool expected)
+    {
+        var first = new TimeInterval(At(firstStart), At(firstEnd));
+        var second = new TimeInterval(At(secondStart), At(secondEnd));
+
+        Assert.Equal(expected, first.Overlaps(second));
+        Assert.Equal(expected, second.Overlaps(first));
+    }
+
+    [Fact]
+    public void Equality_WhenStartAndEndAreEqual_IntervalsAreEqual()
+    {
+        var first = new TimeInterval(At(10), At(11));
+        var second = new TimeInterval(At(10), At(11));
+
+        Assert.Equal(first, second);
+        Assert.True(first == second);
+        Assert.Equal(first.GetHashCode(), second.GetHashCode());
+    }
 }
