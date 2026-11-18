@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CityPark.Infrastructure.Persistence;
 
-public static class CityParkDbContextOptions
+public static class AppDbContextOptions
 {
     public static void Configure(DbContextOptionsBuilder builder, string connectionString)
     {
@@ -13,9 +13,9 @@ public static class CityParkDbContextOptions
             .UseSnakeCaseNamingConvention();
     }
 
-    public static DbContextOptions<CityParkDbContext> Create(string connectionString)
+    public static DbContextOptions<AppDbContext> Create(string connectionString)
     {
-        var builder = new DbContextOptionsBuilder<CityParkDbContext>();
+        var builder = new DbContextOptionsBuilder<AppDbContext>();
         Configure(builder, connectionString);
         return builder.Options;
     }

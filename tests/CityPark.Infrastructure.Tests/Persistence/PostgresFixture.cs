@@ -11,8 +11,8 @@ public sealed class PostgresFixture : IAsyncLifetime
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:17")
         .Build();
 
-    public CityParkDbContext CreateDbContext() =>
-        new(CityParkDbContextOptions.Create(_container.GetConnectionString()));
+    public AppDbContext CreateDbContext() =>
+        new(AppDbContextOptions.Create(_container.GetConnectionString()));
 
     public async ValueTask InitializeAsync()
     {

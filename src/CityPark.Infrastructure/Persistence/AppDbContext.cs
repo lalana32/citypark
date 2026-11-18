@@ -1,3 +1,4 @@
+using CityPark.Application.Persistence;
 using CityPark.Domain.Lots;
 using CityPark.Domain.Reservations;
 
@@ -5,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CityPark.Infrastructure.Persistence;
 
-public sealed class CityParkDbContext(DbContextOptions<CityParkDbContext> options) : DbContext(options)
+public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options), IAppDbContext
 {
     public DbSet<ParkingSpace> ParkingSpaces => Set<ParkingSpace>();
 
@@ -15,6 +16,6 @@ public sealed class CityParkDbContext(DbContextOptions<CityParkDbContext> option
     {
         // btree_gist lets a GiST index compare space_id with "=" in the no-overlap exclusion constraint.
         modelBuilder.HasPostgresExtension("btree_gist");
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(CityParkDbContext).Assembly);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }
 }

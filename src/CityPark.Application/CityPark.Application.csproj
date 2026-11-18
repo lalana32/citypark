@@ -1,6 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <!-- Core EF Core only, for DbSet<T> in IAppDbContext. Provider packages (Npgsql) stay in Infrastructure. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\CityPark.Domain\CityPark.Domain.csproj" />
   </ItemGroup>
 
