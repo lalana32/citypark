@@ -1,3 +1,4 @@
+using CityPark.Domain.Lots;
 using CityPark.Domain.Reservations;
 using CityPark.Infrastructure.Persistence;
 
@@ -33,6 +34,15 @@ public class ModelMappingTests
 
         Assert.Equal("timestamp with time zone", entity.FindProperty(nameof(Reservation.StartTime))!.GetColumnType());
         Assert.Equal("smallint", entity.FindProperty(nameof(Reservation.Status))!.GetColumnType());
+    }
+
+    [Fact]
+    public void ParkingSpace_IsActive_IsNotMappedUntilTheLotMapping()
+    {
+        using var db = new CityParkDbContext(CityParkDbContextOptions.Create("Host=unused"));
+        var entity = db.Model.FindEntityType(typeof(ParkingSpace))!;
+
+        Assert.Null(entity.FindProperty(nameof(ParkingSpace.IsActive)));
     }
 
     [Fact]
