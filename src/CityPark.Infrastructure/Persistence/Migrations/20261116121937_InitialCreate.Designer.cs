@@ -11,7 +11,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace CityPark.Infrastructure.Persistence.Migrations
 {
-    [DbContext(typeof(CityParkDbContext))]
+    [DbContext(typeof(AppDbContext))]
     [Migration("20261116121937_InitialCreate")]
     partial class InitialCreate
     {

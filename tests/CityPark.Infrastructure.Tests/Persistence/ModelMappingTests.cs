@@ -11,7 +11,7 @@ public class ModelMappingTests
 {
     private static IEntityType ReservationEntity()
     {
-        using var db = new CityParkDbContext(CityParkDbContextOptions.Create("Host=unused"));
+        using var db = new AppDbContext(AppDbContextOptions.Create("Host=unused"));
         return db.Model.FindEntityType(typeof(Reservation))!;
     }
 
@@ -39,7 +39,7 @@ public class ModelMappingTests
     [Fact]
     public void ParkingSpace_IsActive_IsNotMappedUntilTheLotMapping()
     {
-        using var db = new CityParkDbContext(CityParkDbContextOptions.Create("Host=unused"));
+        using var db = new AppDbContext(AppDbContextOptions.Create("Host=unused"));
         var entity = db.Model.FindEntityType(typeof(ParkingSpace))!;
 
         Assert.Null(entity.FindProperty(nameof(ParkingSpace.IsActive)));
