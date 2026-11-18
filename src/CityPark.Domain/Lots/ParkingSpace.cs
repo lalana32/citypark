@@ -5,4 +5,6 @@ public sealed class ParkingSpace
     public Guid Id { get; set; }
 
     public string Label { get; set; } = "";
+
+    public bool IsActive { get; set; } = true;
 }
