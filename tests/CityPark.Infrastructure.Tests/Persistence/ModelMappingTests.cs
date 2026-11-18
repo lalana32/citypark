@@ -45,6 +45,19 @@ public class ModelMappingTests
         Assert.Null(entity.FindProperty(nameof(ParkingSpace.IsActive)));
     }
 
+    [Theory]
+    [InlineData(nameof(Reservation.Plate))]
+    [InlineData(nameof(Reservation.Price))]
+    [InlineData(nameof(Reservation.Currency))]
+    [InlineData(nameof(Reservation.Interval))]
+    public void Reservation_DomainOnlyMembers_AreNotMappedUntilTheReservationMapping(string member)
+    {
+        var entity = ReservationEntity();
+
+        Assert.Null(entity.FindProperty(member));
+        Assert.Null(entity.FindNavigation(member));
+    }
+
     [Fact]
     public void DeletingASpace_DoesNotCascadeToReservations()
     {
