@@ -2,6 +2,7 @@ using CityPark.Domain.Lots;
 using CityPark.Domain.Reservations;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Time.Testing;
 
 using Npgsql;
 
@@ -9,19 +10,25 @@ namespace CityPark.Infrastructure.Tests.Persistence;
 
 public sealed class ReservationOverlapConstraintTests(PostgresFixture fixture) : IClassFixture<PostgresFixture>
 {
-    private static readonly DateTime Day = new(2026, 12, 1, 0, 0, 0, DateTimeKind.Utc);
+    private static readonly TimeZoneInfo Sarajevo = TimeZoneInfo.FindSystemTimeZoneById("Europe/Sarajevo");
 
-    private static DateTime At(int hour) => Day.AddHours(hour);
+    // 1 December 2026 is winter time (UTC+1): 10:00–13:00 UTC is 11:00–14:00 local, inside the lot's hours.
+    private static readonly DateTimeOffset Day = new(2026, 12, 1, 0, 0, 0, TimeSpan.Zero);
+
+    private static DateTimeOffset At(int hour) => Day.AddHours(hour);
+
+    // Midnight UTC: before every test start and well within the booking horizon.
+    private static FakeTimeProvider Clock => new(Day);
 
     [Fact]
     public async Task OverlappingActiveReservations_OnSameSpace_SecondInsertFailsWith23P01()
     {
         var ct = TestContext.Current.CancellationToken;
-        var space = await AddSpaceAsync(ct);
-        await AddReservationAsync(space, At(10), At(12), ReservationStatus.Active, ct);
+        var (lot, space) = await AddSpaceAsync(ct);
+        await AddReservationAsync(lot, space, At(10), At(12), ReservationStatus.Active, ct);
 
         var ex = await Assert.ThrowsAsync<DbUpdateException>(() =>
-            AddReservationAsync(space, At(11), At(13), ReservationStatus.Active, ct));
+            AddReservationAsync(lot, space, At(11), At(13), ReservationStatus.Active, ct));
 
         // Exception chain: DbUpdateException -> PostgresException (SQLSTATE 23P01, exclusion_violation).
         var pg = Assert.IsType<PostgresException>(ex.InnerException);
@@ -36,40 +43,40 @@ public sealed class ReservationOverlapConstraintTests(PostgresFixture fixture) :
     public async Task TouchingIntervals_OnSameSpace_BothInsertsSucceed()
     {
         var ct = TestContext.Current.CancellationToken;
-        var space = await AddSpaceAsync(ct);
+        var (lot, space) = await AddSpaceAsync(ct);
 
-        await AddReservationAsync(space, At(10), At(11), ReservationStatus.Active, ct);
-        await AddReservationAsync(space, At(11), At(12), ReservationStatus.Active, ct);
+        await AddReservationAsync(lot, space, At(10), At(11), ReservationStatus.Active, ct);
+        await AddReservationAsync(lot, space, At(11), At(12), ReservationStatus.Active, ct);
 
-        Assert.Equal(2, await CountReservationsAsync(space, ct));
+        Assert.Equal(2, await CountReservationsAsync(space.Id, ct));
     }
 
     [Fact]
     public async Task OverlappingCancelledReservation_OnSameSpace_DoesNotFail()
     {
         var ct = TestContext.Current.CancellationToken;
-        var space = await AddSpaceAsync(ct);
+        var (lot, space) = await AddSpaceAsync(ct);
 
-        await AddReservationAsync(space, At(10), At(12), ReservationStatus.Active, ct);
-        await AddReservationAsync(space, At(11), At(13), ReservationStatus.Cancelled, ct);
+        await AddReservationAsync(lot, space, At(10), At(12), ReservationStatus.Active, ct);
+        await AddReservationAsync(lot, space, At(11), At(13), ReservationStatus.Cancelled, ct);
 
-        Assert.Equal(2, await CountReservationsAsync(space, ct));
+        Assert.Equal(2, await CountReservationsAsync(space.Id, ct));
     }
 
     [Fact]
     public async Task SameInterval_OnDifferentSpace_Succeeds()
     {
         var ct = TestContext.Current.CancellationToken;
-        var first = await AddSpaceAsync(ct);
-        var second = await AddSpaceAsync(ct);
+        var (firstLot, first) = await AddSpaceAsync(ct);
+        var (secondLot, second) = await AddSpaceAsync(ct);
 
-        await AddReservationAsync(first, At(10), At(12), ReservationStatus.Active, ct);
-        await AddReservationAsync(second, At(10), At(12), ReservationStatus.Active, ct);
+        await AddReservationAsync(firstLot, first, At(10), At(12), ReservationStatus.Active, ct);
+        await AddReservationAsync(secondLot, second, At(10), At(12), ReservationStatus.Active, ct);
 
-        Assert.Equal(1, await CountReservationsAsync(second, ct));
+        Assert.Equal(1, await CountReservationsAsync(second.Id, ct));
     }
 
-    private async Task<Guid> AddSpaceAsync(CancellationToken ct)
+    private async Task<(ParkingLot Lot, ParkingSpace Space)> AddSpaceAsync(CancellationToken ct)
     {
         await using var db = fixture.CreateDbContext();
         // Spaces are created through their lot. The lot itself is not mapped yet, so only the space is saved.
@@ -78,23 +85,29 @@ public sealed class ReservationOverlapConstraintTests(PostgresFixture fixture) :
         var space = lot.AddSpace("A-1");
         db.ParkingSpaces.Add(space);
         await db.SaveChangesAsync(ct);
-        return space.Id;
+        return (lot, space);
     }
 
     // A fresh DbContext per insert, like one request per context in the API: a failed
     // SaveChanges leaves the entity tracked, and reusing the context would retry it.
     private async Task AddReservationAsync(
-        Guid spaceId, DateTime start, DateTime end, ReservationStatus status, CancellationToken ct)
+        ParkingLot lot,
+        ParkingSpace space,
+        DateTimeOffset start,
+        DateTimeOffset end,
+        ReservationStatus status,
+        CancellationToken ct)
     {
-        await using var db = fixture.CreateDbContext();
-        db.Reservations.Add(new Reservation
+        var reservation = Reservation.Create(
+            lot, space, new TimeInterval(start, end), new LicensePlate("A12K345"), Sarajevo, Clock);
+
+        if (status == ReservationStatus.Cancelled)
         {
-            Id = Guid.NewGuid(),
-            SpaceId = spaceId,
-            StartTime = start,
-            EndTime = end,
-            Status = status,
-        });
+            reservation.Cancel(CancellationActor.Administrator, Clock);
+        }
+
+        await using var db = fixture.CreateDbContext();
+        db.Reservations.Add(reservation);
         await db.SaveChangesAsync(ct);
     }
 
