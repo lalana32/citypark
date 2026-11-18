@@ -25,6 +25,16 @@ public class ParkingLotTests
     }
 
     [Fact]
+    public void LotAndSpace_GetVersion7Ids()
+    {
+        var lot = NewLot();
+        var space = lot.AddSpace("A-1");
+
+        Assert.Equal(7, lot.Id.Version);
+        Assert.Equal(7, space.Id.Version);
+    }
+
+    [Fact]
     public void Create_TrimsNameAndAddress()
     {
         var lot = ParkingLot.Create("  Centar ", " Titova 1  ", TwoMarks, DayWindow);

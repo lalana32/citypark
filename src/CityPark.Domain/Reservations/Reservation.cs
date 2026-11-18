@@ -27,6 +27,9 @@ public sealed class Reservation
 
     public Guid SpaceId { get; private set; }
 
+    /// <summary>The ASP.NET Core Identity user who made the reservation (ADR-003).</summary>
+    public Guid UserId { get; private set; }
+
     public ParkingSpace Space { get; private set; } = null!;
 
     // StartTime and EndTime have Kind = Utc, as Npgsql needs for timestamptz (ADR-004).
@@ -51,6 +54,7 @@ public sealed class Reservation
         ParkingSpace space,
         TimeInterval interval,
         LicensePlate plate,
+        Guid userId,
         TimeZoneInfo timeZone,
         TimeProvider clock)
     {
@@ -60,6 +64,12 @@ public sealed class Reservation
         ArgumentNullException.ThrowIfNull(plate);
         ArgumentNullException.ThrowIfNull(timeZone);
         ArgumentNullException.ThrowIfNull(clock);
+
+        // An empty id is a bug in the caller (the user comes from the sign-in cookie), not a broken business rule.
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("User id must not be empty.", nameof(userId));
+        }
 
         if (!lot.Spaces.Contains(space))
         {
@@ -97,8 +107,9 @@ public sealed class Reservation
 
         return new Reservation
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.CreateVersion7(),
             SpaceId = space.Id,
+            UserId = userId,
             StartTime = interval.Start.UtcDateTime,
             EndTime = interval.End.UtcDateTime,
             Status = ReservationStatus.Active,

@@ -12,6 +12,8 @@ public class ReservationCreateTests
 
     private static readonly LicensePlate Plate = new("A12K345");
 
+    private static readonly Guid UserId = Guid.CreateVersion7();
+
     private readonly ParkingLot _lot;
 
     private readonly ParkingSpace _space;
@@ -36,7 +38,7 @@ public class ReservationCreateTests
     private static FakeTimeProvider NineOClock => ClockAt(Today(9));
 
     private Reservation Create(DateTimeOffset start, DateTimeOffset end, TimeProvider? clock = null) =>
-        Reservation.Create(_lot, _space, new TimeInterval(start, end), Plate, Sarajevo, clock ?? NineOClock);
+        Reservation.Create(_lot, _space, new TimeInterval(start, end), Plate, UserId, Sarajevo, clock ?? NineOClock);
 
     [Fact]
     public void Create_WithValidRequest_ReturnsActiveReservationWithSnapshot()
@@ -45,6 +47,7 @@ public class ReservationCreateTests
 
         Assert.NotEqual(Guid.Empty, reservation.Id);
         Assert.Equal(_space.Id, reservation.SpaceId);
+        Assert.Equal(UserId, reservation.UserId);
         Assert.Equal(new TimeInterval(Today(10), Today(11, 15)), reservation.Interval);
         Assert.Equal(ReservationStatus.Active, reservation.Status);
         Assert.Equal(Plate, reservation.Plate);
@@ -186,14 +189,30 @@ public class ReservationCreateTests
         var foreignSpace = otherLot.AddSpace("A-1");
 
         Assert.Throws<DomainException>(() => Reservation.Create(
-            _lot, foreignSpace, new TimeInterval(Today(10), Today(11)), Plate, Sarajevo, NineOClock));
+            _lot, foreignSpace, new TimeInterval(Today(10), Today(11)), Plate, UserId, Sarajevo, NineOClock));
+    }
+
+    [Fact]
+    public void Create_WhenUserIdIsEmpty_ThrowsArgumentException()
+    {
+        var ex = Assert.Throws<ArgumentException>(() => Reservation.Create(
+            _lot, _space, new TimeInterval(Today(10), Today(11)), Plate, Guid.Empty, Sarajevo, NineOClock));
+
+        Assert.Equal("userId", ex.ParamName);
+    }
+
+    // Version 7 ids start with a timestamp, so new rows land at the end of the primary key index.
+    [Fact]
+    public void Create_AssignsVersion7Id()
+    {
+        Assert.Equal(7, Create(Today(10), Today(11)).Id.Version);
     }
 
     [Fact]
     public void Create_WhenClockIsNull_ThrowsArgumentNullException()
     {
         Assert.Throws<ArgumentNullException>(() => Reservation.Create(
-            _lot, _space, new TimeInterval(Today(10), Today(11)), Plate, Sarajevo, null!));
+            _lot, _space, new TimeInterval(Today(10), Today(11)), Plate, UserId, Sarajevo, null!));
     }
 
     [Fact]

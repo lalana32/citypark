@@ -18,9 +18,10 @@ internal sealed class ReservationConfiguration : IEntityTypeConfiguration<Reserv
             .HasForeignKey(r => r.SpaceId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Plate, Price and Currency are part of the domain model (CP-010) but have no columns yet.
+        // UserId, Plate, Price and Currency are part of the domain model (CP-010) but have no columns yet.
         // Ignoring them keeps the model equal to the InitialCreate snapshot; the reservation mapping
         // adds the columns with a migration. Interval is computed from StartTime and EndTime.
+        builder.Ignore(r => r.UserId);
         builder.Ignore(r => r.Plate);
         builder.Ignore(r => r.Price);
         builder.Ignore(r => r.Currency);
