@@ -11,4 +11,13 @@ public class DomainExceptionTests
 
         Assert.Equal("End must be after start.", exception.Message);
     }
+
+    [Fact]
+    public void DomainConflictException_IsADomainException()
+    {
+        DomainException exception = new DomainConflictException("Reservation is already cancelled.");
+
+        Assert.IsType<DomainConflictException>(exception);
+        Assert.Equal("Reservation is already cancelled.", exception.Message);
+    }
 }

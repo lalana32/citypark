@@ -115,6 +115,35 @@ public sealed class Reservation
         return clock.GetUtcNow() >= Interval.End;
     }
 
+    /// <summary>
+    /// R9: a customer may cancel until the reservation starts; an administrator at any time.
+    /// The status only moves from Active to Cancelled (I9).
+    /// </summary>
+    public void Cancel(CancellationActor actor, TimeProvider clock)
+    {
+        ArgumentNullException.ThrowIfNull(clock);
+
+        // Checked first: a second cancel is a conflict with the current state, whoever sends it.
+        if (Status == ReservationStatus.Cancelled)
+        {
+            throw new DomainConflictException($"Reservation {Id} is already cancelled.");
+        }
+
+        var mayCancel = actor switch
+        {
+            CancellationActor.Customer => clock.GetUtcNow() < Interval.Start,
+            CancellationActor.Administrator => true,
+            _ => throw new ArgumentOutOfRangeException(nameof(actor), actor, "Unknown cancellation actor."),
+        };
+
+        if (!mayCancel)
+        {
+            throw new DomainException("A customer can cancel a reservation only before it starts.");
+        }
+
+        Status = ReservationStatus.Cancelled;
+    }
+
     // Checked in local time, so the rule does not rely on the zone offset being whole hours.
     private static void EnsureOnGrid(DateTimeOffset instant, TimeZoneInfo timeZone, string name)
     {
