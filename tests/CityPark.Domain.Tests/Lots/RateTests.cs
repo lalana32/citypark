@@ -78,4 +78,51 @@ public class RateTests
     {
         Assert.NotEqual(new Rate(2.00m, "BAM"), new Rate(2.00m, "EUR"));
     }
+
+    // decimal is not a compile-time constant in attributes, so the cases live in typed TheoryData.
+    public static TheoryData<int, decimal> WholeHourPrices => new()
+    {
+        { 30, 2.00m },
+        { 60, 2.00m },
+        { 61, 4.00m },
+        { 70, 4.00m }, // 1 h 10 min
+        { 75, 4.00m },
+        { 120, 4.00m },
+        { 121, 6.00m },
+    };
+
+    [Theory]
+    [MemberData(nameof(WholeHourPrices))]
+    public void PriceFor_BillsEveryStartedHourAsFullHour(int minutes, decimal expected)
+    {
+        var rate = new Rate(2.00m, "BAM");
+
+        Assert.Equal(expected, rate.PriceFor(TimeSpan.FromMinutes(minutes)));
+    }
+
+    [Fact]
+    public void PriceFor_KeepsCentsOfHourlyPrice()
+    {
+        var rate = new Rate(2.35m, "BAM");
+
+        Assert.Equal(4.70m, rate.PriceFor(TimeSpan.FromMinutes(90)));
+    }
+
+    [Fact]
+    public void PriceFor_WhenOneTickOverAnHour_BillsTwoHours()
+    {
+        var rate = new Rate(2.00m, "BAM");
+
+        Assert.Equal(4.00m, rate.PriceFor(TimeSpan.FromHours(1) + TimeSpan.FromTicks(1)));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-30)]
+    public void PriceFor_WhenDurationIsNotPositive_ThrowsDomainException(int minutes)
+    {
+        var rate = new Rate(2.00m, "BAM");
+
+        Assert.Throws<DomainException>(() => rate.PriceFor(TimeSpan.FromMinutes(minutes)));
+    }
 }

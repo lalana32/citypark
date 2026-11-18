@@ -33,4 +33,22 @@ public sealed record Rate
     public decimal HourlyPrice { get; }
 
     public string Currency { get; }
+
+    /// <summary>
+    /// Price of a stay of the given length: every started hour is billed as a full hour (R8).
+    /// 60 minutes is one hour, 61 minutes is two. The result is in <see cref="Currency"/>.
+    /// </summary>
+    public decimal PriceFor(TimeSpan duration)
+    {
+        if (duration <= TimeSpan.Zero)
+        {
+            throw new DomainException($"Duration must be positive, but was {duration}.");
+        }
+
+        // Integer ceiling on ticks: no floating point, so 60 minutes can never become 1.0000001 hours.
+        var billedHours = (duration.Ticks + TimeSpan.TicksPerHour - 1) / TimeSpan.TicksPerHour;
+
+        // A two-decimal price times a whole number of hours always has two decimals; no rounding needed.
+        return HourlyPrice * billedHours;
+    }
 }
