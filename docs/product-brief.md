@@ -148,7 +148,8 @@ erDiagram
         text address
         time opens_at "local daily window start"
         time closes_at "local daily window end"
-        numeric hourly_price "BAM"
+        numeric hourly_price "Rate: positive, two decimals"
+        text currency "Rate: ISO 4217 code, BAM"
         boolean is_active
     }
     PARKING_SPACE {
@@ -176,7 +177,7 @@ erDiagram
 | User → reservation | one to many (may be zero) | a reservation always has a user | reservations stay as history |
 
 Design notes
-- **Why no Rate or OpeningHours table:** there is exactly one hourly price and one daily window per lot, and a reservation stores its own price, so no history is needed. They are columns of the lot.
+- **Why no Rate or OpeningHours table:** there is exactly one hourly price and one daily window per lot, and a reservation stores its own price, so no history is needed. In the domain they are value objects (`Rate`, `OpeningHours`); in the database they are columns of the lot.
 - **Why no capacity or free-spaces column:** both are derived from spaces and reservations. Storing them would duplicate data that can disagree.
 - **Why a Space table:** the database can only prevent double booking if the thing being booked exists as a row.
 - **User** is the ASP.NET Core Identity user. CityPark does not duplicate its tables.
