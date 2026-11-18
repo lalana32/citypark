@@ -24,7 +24,7 @@ public class ReservationCancelTests
         var space = lot.AddSpace("A-1");
 
         return Reservation.Create(
-            lot, space, new TimeInterval(Today(10), Today(11)), new LicensePlate("A12K345"), Sarajevo, ClockAt(Today(9)));
+            lot, space, new TimeInterval(Today(10), Today(11)), new LicensePlate("A12K345"), Guid.CreateVersion7(), Sarajevo, ClockAt(Today(9)));
     }
 
     [Fact]

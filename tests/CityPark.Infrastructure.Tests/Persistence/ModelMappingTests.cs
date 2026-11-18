@@ -46,6 +46,7 @@ public class ModelMappingTests
     }
 
     [Theory]
+    [InlineData(nameof(Reservation.UserId))]
     [InlineData(nameof(Reservation.Plate))]
     [InlineData(nameof(Reservation.Price))]
     [InlineData(nameof(Reservation.Currency))]

@@ -99,7 +99,7 @@ public sealed class ReservationOverlapConstraintTests(PostgresFixture fixture) :
         CancellationToken ct)
     {
         var reservation = Reservation.Create(
-            lot, space, new TimeInterval(start, end), new LicensePlate("A12K345"), Sarajevo, Clock);
+            lot, space, new TimeInterval(start, end), new LicensePlate("A12K345"), Guid.CreateVersion7(), Sarajevo, Clock);
 
         if (status == ReservationStatus.Cancelled)
         {

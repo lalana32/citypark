@@ -15,7 +15,7 @@ public sealed class ParkingSpace
 
     internal ParkingSpace(string label)
     {
-        Id = Guid.NewGuid();
+        Id = Guid.CreateVersion7();
         Label = NormalizeLabel(label);
     }
 

@@ -12,7 +12,7 @@ public sealed class ParkingLot
 
     private ParkingLot(string name, string address, Rate rate, OpeningHours openingHours)
     {
-        Id = Guid.NewGuid();
+        Id = Guid.CreateVersion7();
         Name = name;
         Address = address;
         Rate = rate;
