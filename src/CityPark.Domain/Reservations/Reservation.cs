@@ -18,18 +18,23 @@ public sealed class Reservation
 
     public static readonly TimeSpan StartTolerance = TimeSpan.FromMinutes(5);
 
-    public Guid Id { get; set; }
+    // Used by Create and by EF Core to materialize rows; no other code can build a reservation.
+    private Reservation()
+    {
+    }
 
-    public Guid SpaceId { get; set; }
+    public Guid Id { get; private set; }
 
-    public ParkingSpace Space { get; set; } = null!;
+    public Guid SpaceId { get; private set; }
+
+    public ParkingSpace Space { get; private set; } = null!;
 
     // StartTime and EndTime have Kind = Utc, as Npgsql needs for timestamptz (ADR-004).
-    public DateTime StartTime { get; set; }
+    public DateTime StartTime { get; private set; }
 
-    public DateTime EndTime { get; set; }
+    public DateTime EndTime { get; private set; }
 
-    public ReservationStatus Status { get; set; }
+    public ReservationStatus Status { get; private set; }
 
     public LicensePlate Plate { get; private set; } = null!;
 
@@ -77,7 +82,6 @@ public sealed class Reservation
                 $"{lot.OpeningHours.OpensAt:HH:mm}–{lot.OpeningHours.ClosesAt:HH:mm}.");
         }
 
-        // Read the clock once, so every rule below sees the same "now".
         var now = clock.GetUtcNow();
 
         if (interval.Start > now + BookingHorizon)
@@ -104,10 +108,7 @@ public sealed class Reservation
         };
     }
 
-    /// <summary>
-    /// "Finished" is derived from time and never stored: the end has passed. The end is
-    /// exclusive, so a reservation that ends at 11:00 is finished at 11:00.
-    /// </summary>
+    /// <summary>Derived from time, never stored; the end is exclusive.</summary>
     public bool IsFinished(TimeProvider clock)
     {
         ArgumentNullException.ThrowIfNull(clock);
@@ -115,10 +116,7 @@ public sealed class Reservation
         return clock.GetUtcNow() >= Interval.End;
     }
 
-    /// <summary>
-    /// R9: a customer may cancel until the reservation starts; an administrator at any time.
-    /// The status only moves from Active to Cancelled (I9).
-    /// </summary>
+    /// <summary>R9 and I9: only Active → Cancelled.</summary>
     public void Cancel(CancellationActor actor, TimeProvider clock)
     {
         ArgumentNullException.ThrowIfNull(clock);
