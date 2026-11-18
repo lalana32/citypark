@@ -72,7 +72,10 @@ public sealed class ReservationOverlapConstraintTests(PostgresFixture fixture) :
     private async Task<Guid> AddSpaceAsync(CancellationToken ct)
     {
         await using var db = fixture.CreateDbContext();
-        var space = new ParkingSpace { Id = Guid.NewGuid(), Label = "A-1" };
+        // Spaces are created through their lot. The lot itself is not mapped yet, so only the space is saved.
+        var lot = ParkingLot.Create(
+            "Test lot", "Test street 1", new Rate(2.00m, "BAM"), new OpeningHours(new TimeOnly(7, 0), new TimeOnly(22, 0)));
+        var space = lot.AddSpace("A-1");
         db.ParkingSpaces.Add(space);
         await db.SaveChangesAsync(ct);
         return space.Id;
