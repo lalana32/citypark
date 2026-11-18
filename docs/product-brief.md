@@ -94,7 +94,7 @@ All times are evaluated in the city's time zone (**Europe/Sarajevo**) and stored
 | R6 | **No overlap per space.** Two Active reservations of the same space never overlap. Touching intervals are allowed | `[start, end)` | 10:00–11:00 and 11:00–12:00 | 10:00–11:00 and 10:30–11:30 | **Database** (exclusion constraint) |
 | R7 | **No overlap per vehicle.** The same (normalized) plate cannot have two overlapping Active reservations, in any lot | `[start, end)` | plate A: 10–11, then 11–12 | plate A: 10–11 in lot 1 and 10:30–11:30 in lot 2 | **Database** (exclusion constraint) |
 | R8 | **Price.** Every started hour is billed as a full hour: `ceil(minutes / 60) × hourly price`. Calculated at creation and stored. Hourly price 2.00 BAM | whole hours | 60 min = 2.00; 61 min = 4.00; 121 min = 6.00 | a stored price that changes when the hourly price changes | Domain; stored in the reservation |
-| R9 | **Cancellation.** A customer may cancel until the reservation starts. An administrator may cancel at any time. Cancelling twice is an error. A cancelled reservation frees the space and the plate | start time | cancel at 09:59 for a 10:00 start | cancel at 10:00 or later (customer); second cancel | Domain |
+| R9 | **Cancellation.** A customer may cancel until the reservation starts. An administrator may cancel at any time. Cancelling twice is a conflict. A cancelled reservation frees the space and the plate | start time | cancel at 09:59 for a 10:00 start | cancel at 10:00 or later (customer); second cancel | Domain |
 | R10 | **Limit per user.** At most 10 Active future reservations per user | 10 | 10th reservation accepted | 11th rejected | Application (soft rule; two simultaneous requests may exceed it by one) |
 | R11 | **Active lot and space.** Inactive lots and spaces do not receive new reservations | – | active lot | deactivated lot | Application |
 | R12 | **Deactivation.** A lot or space with future Active reservations cannot be deactivated (409); the response lists them | – | empty space is deactivated | space with a Friday reservation | Application |
@@ -166,6 +166,7 @@ erDiagram
         timestamptz end_time "UTC"
         text plate "normalized"
         numeric price "snapshot at creation"
+        text currency "snapshot with the price, BAM"
         smallint status "Active or Cancelled"
     }
 ```
@@ -194,7 +195,7 @@ Design notes
 | I6 | The stored price does not change after creation | Domain: price is set once at creation |
 | I7 | An inactive space or lot receives no new reservation | Application validation |
 | I8 | A space or lot with future Active reservations cannot be deactivated | Application validation |
-| I9 | A reservation moves only from Active to Cancelled; cancelling twice is an error | Domain |
+| I9 | A reservation moves only from Active to Cancelled; cancelling twice is a conflict | Domain |
 | I10 | A user has at most 10 Active future reservations | Application (soft rule, see R10) |
 
 The first two database guarantees (I4, I5) need the PostgreSQL `btree_gist` extension and are proven in the exclusion-constraint spike and covered by concurrency tests (see the project backlog).
