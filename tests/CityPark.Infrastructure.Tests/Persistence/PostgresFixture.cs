@@ -25,15 +25,15 @@ public sealed class PostgresFixture : IAsyncLifetime
     /// migration, so tests that move the schema up and down get one of their own and leave the
     /// shared, fully migrated database untouched.
     /// </summary>
-    public AppDbContext CreateDbContext(string database)
-    {
-        var connectionString = new NpgsqlConnectionStringBuilder(_container.GetConnectionString())
+    public AppDbContext CreateDbContext(string database) =>
+        new(AppDbContextOptions.Create(GetConnectionString(database)));
+
+    /// <summary>Connection string for another database on the same server, for code that builds its own context.</summary>
+    public string GetConnectionString(string database) =>
+        new NpgsqlConnectionStringBuilder(_container.GetConnectionString())
         {
             Database = database,
         }.ConnectionString;
-
-        return new AppDbContext(AppDbContextOptions.Create(connectionString));
-    }
 
     public async ValueTask InitializeAsync()
     {
