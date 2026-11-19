@@ -47,6 +47,19 @@ deadlock is not mapped to a conflict, because the aborted request may not overla
 that is finally committed. See
 [ADR-002](adr/0002-overlap-prevention-with-exclusion-constraint.md#concurrency-tests).
 
+### Parallel cancellation
+
+Added in CP-018: `tests/CityPark.Infrastructure.Tests/Reservations/ParallelCancelReservationTests.cs`.
+
+| Test | Setup | Expected |
+| --- | --- | --- |
+| Stale copy | one context reads the reservation, the service then cancels it, the stale copy is cancelled and saved | `DbUpdateConcurrencyException` from the `xmin` token |
+| Simultaneous cancels | 20 cancels of one reservation by its owner, 20 rounds | exactly 1 succeeds, 19 get `DomainConflictException` |
+
+A late request gets the conflict either from the domain (it read `Cancelled`) or from the
+token (it read a stale `Active`). Both are a 409. See
+[ADR-005](adr/0005-optimistic-concurrency-on-xmin-for-cancellation.md).
+
 ### Running the suite repeatedly
 
 The card requires 20 consecutive green runs. In PowerShell:
