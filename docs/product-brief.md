@@ -108,6 +108,7 @@ All times are evaluated in the city's time zone (**Europe/Sarajevo**) and stored
 - **Cancellation (R9):** a reservation at 10:00–11:00 can be cancelled by the customer at 09:59; at 10:01 it cannot. An administrator can cancel it at 10:30.
 - **Vehicle (R7):** plate `A12K345` has an Active reservation 10:00–11:00 in lot 1. A reservation for the same plate 10:30–11:30 in lot 2 is rejected. 11:00–12:00 is accepted.
 - **Space assignment:** a lot has 2 spaces, and both are free at 10:00–11:00. Three drivers request that interval at the same moment. Two receive different spaces; the third is rejected with a conflict. This is guaranteed by the database, not by counting.
+- **Availability (R1–R6):** a lot has 3 active spaces, and space 1 has an Active reservation 10:00–11:00. For 10:30–11:30, 2 spaces are free; for 11:00–12:00, all 3 are free, because touching intervals do not block (the same `[start, end)` rule as R6). A Cancelled reservation blocks nothing. An inactive space is neither listed as free nor counted in the capacity. An interval that breaks R1–R5 is rejected with the same error as a reservation request, and an unknown lot is "not found".
 
 ## 7. Domain glossary
 
