@@ -10,6 +10,11 @@ public sealed class ParkingLot
 {
     private readonly List<ParkingSpace> _spaces = [];
 
+    // Used by EF Core to materialize rows: it cannot pass Rate and OpeningHours to a constructor.
+    private ParkingLot()
+    {
+    }
+
     private ParkingLot(string name, string address, Rate rate, OpeningHours openingHours)
     {
         Id = Guid.CreateVersion7();
@@ -21,13 +26,13 @@ public sealed class ParkingLot
 
     public Guid Id { get; private set; }
 
-    public string Name { get; private set; }
+    public string Name { get; private set; } = "";
 
-    public string Address { get; private set; }
+    public string Address { get; private set; } = "";
 
-    public Rate Rate { get; private set; }
+    public Rate Rate { get; private set; } = null!;
 
-    public OpeningHours OpeningHours { get; private set; }
+    public OpeningHours OpeningHours { get; private set; } = null!;
 
     public IReadOnlyCollection<ParkingSpace> Spaces => _spaces.AsReadOnly();
 
