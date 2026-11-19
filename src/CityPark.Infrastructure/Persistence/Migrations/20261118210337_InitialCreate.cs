@@ -280,25 +280,11 @@ namespace CityPark.Infrastructure.Persistence.Migrations
                 name: "ix_reservations_user_id",
                 table: "reservations",
                 column: "user_id");
-
-            // I4 (ADR-002): Active reservations of one space never overlap, using half-open [start, end).
-            // EF Core cannot model exclusion constraints, so this is raw SQL; the plate constraint (I5)
-            // and the error mapping follow in the next card.
-            migrationBuilder.Sql("""
-                ALTER TABLE reservations
-                ADD CONSTRAINT ex_reservations_space_no_overlap
-                EXCLUDE USING gist (
-                    space_id WITH =,
-                    tstzrange(start_time, end_time, '[)') WITH &&
-                ) WHERE (status = 1);
-                """);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql("ALTER TABLE reservations DROP CONSTRAINT ex_reservations_space_no_overlap;");
-
             migrationBuilder.DropTable(
                 name: "asp_net_role_claims");
 
