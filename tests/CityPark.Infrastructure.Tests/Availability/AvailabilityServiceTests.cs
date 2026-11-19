@@ -116,6 +116,28 @@ public sealed class AvailabilityServiceTests(PostgresFixture fixture) : IClassFi
         await Assert.ThrowsAsync<DomainException>(() => QueryAsync(lot.Id, start, start.AddHours(1), ct));
     }
 
+    [Fact]
+    public async Task Availability_RunsAsOneSqlStatement_AfterTheLotLookup()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var lot = await AddLotAsync(ct);
+        await AddReservationAsync(lot, "A-1", Local(10), Local(11), ReservationStatus.Active, ct);
+        var commands = new List<string>();
+
+        await using (var db = fixture.CreateLoggingDbContext(commands.Add))
+        {
+            await new AvailabilityService(db, Clock, Sarajevo).GetAvailabilityAsync(lot.Id, Local(10, 30), Local(11, 30), ct);
+        }
+
+        // 1: the lot by id, for its opening hours (R3). 2: active spaces with an EXISTS subquery on
+        // reservations. More commands would mean a query per space (N+1).
+        Assert.Equal(2, commands.Count);
+        Assert.Contains("EXISTS", commands[1], StringComparison.Ordinal);
+        Assert.Contains("reservations", commands[1], StringComparison.Ordinal);
+
+        TestContext.Current.TestOutputHelper?.WriteLine(commands[1]);
+    }
+
     private async Task<AvailabilityResult> QueryAsync(Guid lotId, DateTimeOffset start, DateTimeOffset end, CancellationToken ct)
     {
         await using var db = fixture.CreateDbContext();
