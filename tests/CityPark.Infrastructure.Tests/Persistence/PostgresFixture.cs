@@ -19,6 +19,9 @@ public sealed class PostgresFixture : IAsyncLifetime
     /// <summary>An Identity user that tests can use as the owner of reservations (foreign key I2).</summary>
     public Guid UserId { get; } = Guid.CreateVersion7();
 
+    /// <summary>Connection string for the shared, fully migrated database.</summary>
+    public string ConnectionString => _container.GetConnectionString();
+
     public AppDbContext CreateDbContext() =>
         new(AppDbContextOptions.Create(_container.GetConnectionString()));
 
