@@ -1,5 +1,6 @@
 using CityPark.Application.Common;
 using CityPark.Application.Persistence;
+using CityPark.Domain.Common;
 using CityPark.Domain.Reservations;
 
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +26,14 @@ public sealed class CancelReservationService(IAppDbContext db, TimeProvider cloc
 
         reservation.Cancel(actor.Role, clock);
 
-        await db.SaveChangesAsync(cancellationToken);
+        // A parallel request changed the row after we read it (xmin token), e.g. a double click.
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            throw new DomainConflictException($"Reservation {reservationId} was changed by another request.", ex);
+        }
     }
 }
