@@ -3,6 +3,8 @@ using CityPark.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
+using Npgsql;
+
 using Testcontainers.PostgreSql;
 
 namespace CityPark.Infrastructure.Tests.Persistence;
@@ -17,6 +19,21 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     public AppDbContext CreateDbContext() =>
         new(AppDbContextOptions.Create(_container.GetConnectionString()));
+
+    /// <summary>
+    /// A context for another database on the same server. EF Core creates the database on the first
+    /// migration, so tests that move the schema up and down get one of their own and leave the
+    /// shared, fully migrated database untouched.
+    /// </summary>
+    public AppDbContext CreateDbContext(string database)
+    {
+        var connectionString = new NpgsqlConnectionStringBuilder(_container.GetConnectionString())
+        {
+            Database = database,
+        }.ConnectionString;
+
+        return new AppDbContext(AppDbContextOptions.Create(connectionString));
+    }
 
     public async ValueTask InitializeAsync()
     {
