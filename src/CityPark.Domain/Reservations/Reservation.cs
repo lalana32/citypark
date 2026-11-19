@@ -1,12 +1,10 @@
+using System.Linq.Expressions;
+
 using CityPark.Domain.Common;
 using CityPark.Domain.Lots;
 
 namespace CityPark.Domain.Reservations;
 
-/// <summary>
-/// A claim on one space for one interval by one vehicle, with the price fixed at creation.
-/// Created only through <see cref="Create"/>, which enforces rules R1–R5 and R8.
-/// </summary>
 public sealed class Reservation
 {
     // Rule values from docs/product-brief.md (R1, R2, R4, R5).
@@ -76,6 +74,29 @@ public sealed class Reservation
             throw new DomainException($"Space '{space.Label}' does not belong to lot '{lot.Name}'.");
         }
 
+        EnsureBookable(lot, interval, timeZone, clock);
+
+        return new Reservation
+        {
+            Id = Guid.CreateVersion7(),
+            SpaceId = space.Id,
+            UserId = userId,
+            StartTime = interval.Start.UtcDateTime,
+            EndTime = interval.End.UtcDateTime,
+            Status = ReservationStatus.Active,
+            Plate = plate,
+            Price = lot.Rate.PriceFor(interval.Duration),
+            Currency = lot.Rate.Currency,
+        };
+    }
+
+    public static void EnsureBookable(ParkingLot lot, TimeInterval interval, TimeZoneInfo timeZone, TimeProvider clock)
+    {
+        ArgumentNullException.ThrowIfNull(lot);
+        ArgumentNullException.ThrowIfNull(interval);
+        ArgumentNullException.ThrowIfNull(timeZone);
+        ArgumentNullException.ThrowIfNull(clock);
+
         if (interval.Duration < MinimumDuration)
         {
             throw new DomainException(
@@ -104,19 +125,17 @@ public sealed class Reservation
             throw new DomainException(
                 $"A reservation may start at most {StartTolerance.TotalMinutes} minutes in the past.");
         }
+    }
 
-        return new Reservation
-        {
-            Id = Guid.CreateVersion7(),
-            SpaceId = space.Id,
-            UserId = userId,
-            StartTime = interval.Start.UtcDateTime,
-            EndTime = interval.End.UtcDateTime,
-            Status = ReservationStatus.Active,
-            Plate = plate,
-            Price = lot.Rate.PriceFor(interval.Duration),
-            Currency = lot.Rate.Currency,
-        };
+    public static Expression<Func<Reservation, bool>> ActiveAndOverlapping(TimeInterval interval)
+    {
+        ArgumentNullException.ThrowIfNull(interval);
+
+        // Locals, not interval.Start inside the lambda: EF Core sends them as two timestamptz parameters.
+        var start = interval.Start.UtcDateTime;
+        var end = interval.End.UtcDateTime;
+
+        return r => r.Status == ReservationStatus.Active && r.StartTime < end && start < r.EndTime;
     }
 
     /// <summary>Derived from time, never stored; the end is exclusive.</summary>
