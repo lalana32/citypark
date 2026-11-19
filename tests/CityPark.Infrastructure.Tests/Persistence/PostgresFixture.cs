@@ -2,6 +2,8 @@ using CityPark.Infrastructure.Persistence;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 using Npgsql;
 
@@ -19,6 +21,18 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     public AppDbContext CreateDbContext() =>
         new(AppDbContextOptions.Create(_container.GetConnectionString()));
+
+    /// <summary>
+    /// A context that passes every SQL command it executes to <paramref name="log"/>, for tests that
+    /// check what EF Core really sends to PostgreSQL.
+    /// </summary>
+    public AppDbContext CreateLoggingDbContext(Action<string> log)
+    {
+        var builder = new DbContextOptionsBuilder<AppDbContext>();
+        AppDbContextOptions.Configure(builder, _container.GetConnectionString());
+        builder.LogTo(log, [RelationalEventId.CommandExecuted], LogLevel.Information);
+        return new AppDbContext(builder.Options);
+    }
 
     /// <summary>
     /// A context for another database on the same server. EF Core creates the database on the first
