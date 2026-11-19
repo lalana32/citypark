@@ -27,7 +27,6 @@ namespace CityPark.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("CityPark.Domain.Lots.ParkingLot", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -78,7 +77,6 @@ namespace CityPark.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("CityPark.Domain.Lots.ParkingSpace", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -108,7 +106,6 @@ namespace CityPark.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("CityPark.Domain.Reservations.Reservation", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 

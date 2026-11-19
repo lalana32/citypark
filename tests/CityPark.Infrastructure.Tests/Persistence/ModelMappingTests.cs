@@ -115,6 +115,17 @@ public class ModelMappingTests
         Assert.Equal("fk_reservations_asp_net_users_user_id", foreignKeys["asp_net_users"].GetConstraintName());
     }
 
+    [Theory]
+    [InlineData(typeof(ParkingLot))]
+    [InlineData(typeof(ParkingSpace))]
+    [InlineData(typeof(Reservation))]
+    public void DomainKeys_AreNeverGeneratedByEfCore(Type type)
+    {
+        var key = Assert.Single(Model.FindEntityType(type)!.FindPrimaryKey()!.Properties);
+
+        Assert.Equal(ValueGenerated.Never, key.ValueGenerated);
+    }
+
     [Fact]
     public void Reservation_Interval_IsNotMapped()
     {
