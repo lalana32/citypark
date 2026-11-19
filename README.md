@@ -134,3 +134,35 @@ dotnet ef migrations add <Name> --project src/CityPark.Infrastructure --startup-
 Read the generated migration before committing it. Exclusion constraints are not modelled by
 EF Core and are added to a migration as raw SQL (see
 [ADR-002](docs/adr/0002-overlap-prevention-with-exclusion-constraint.md)).
+
+## Demo data
+
+When the API starts in the `Development` environment, it seeds three demo lots so a fresh local
+database has something to show. Both launch profiles in `launchSettings.json` set `Development`,
+so with a migrated database (see [Apply](#apply)) this is enough:
+
+```bash
+dotnet run --project src/CityPark.Api
+```
+
+| Lot          | Address          | Rate per hour | Opening hours | Spaces          |
+| ------------ | ---------------- | ------------- | ------------- | --------------- |
+| Centar       | Ferhadija 1      | 2.50 BAM      | 07:00–22:00   | 30 (A-01…A-30)  |
+| Marijin Dvor | Zmaja od Bosne 8 | 2.00 BAM      | 06:00–23:00   | 20 (A-01…A-20)  |
+| Baščaršija   | Bravadžiluk 2    | 3.00 BAM      | 08:00–20:00   | 12 (A-01…A-12)  |
+
+- The seeder runs on every start and adds only the lots whose name is not yet in the database,
+  so restarting the API does not duplicate them.
+- In any other environment (`Production`, `Staging`, ...) it does nothing.
+- No users are seeded; accounts come with authentication.
+
+Check the result in `psql` (see [Connect](#connect)):
+
+```sql
+SELECT l.name, l.hourly_price, l.opens_at, l.closes_at, count(s.id) AS spaces
+FROM parking_lots l JOIN parking_spaces s ON s.lot_id = l.id
+GROUP BY l.id ORDER BY l.name;
+```
+
+To start over with only the demo data, [reset](#reset) the database, apply the migrations and
+run the API again.
