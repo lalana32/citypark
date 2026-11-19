@@ -7,10 +7,16 @@ namespace CityPark.Infrastructure.Persistence.Configurations;
 
 internal sealed class ParkingSpaceConfiguration : IEntityTypeConfiguration<ParkingSpace>
 {
-    // IsActive is part of the domain model (CP-009) but has no column yet. Ignoring it keeps the
-    // model equal to the InitialCreate snapshot; the lot mapping adds the column with a migration.
+    /// <summary>Shadow foreign key to parking_lots: the database needs the column, the domain does not.</summary>
+    internal const string LotId = "LotId";
+
     public void Configure(EntityTypeBuilder<ParkingSpace> builder)
     {
-        builder.Ignore(s => s.IsActive);
+        // Explicit because there is no DbSet<ParkingSpace> to name the table after (spaces live in the lot).
+        builder.ToTable("parking_spaces");
+
+        // I1: ParkingLot.AddSpace already rejects a duplicate label, but only for the spaces it has
+        // loaded. The unique index also holds for concurrent requests and for direct SQL.
+        builder.HasIndex(LotId, nameof(ParkingSpace.Label)).IsUnique();
     }
 }

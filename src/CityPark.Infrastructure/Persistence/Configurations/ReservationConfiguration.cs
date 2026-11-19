@@ -1,5 +1,6 @@
 using CityPark.Domain.Reservations;
 
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -13,18 +14,26 @@ internal sealed class ReservationConfiguration : IEntityTypeConfiguration<Reserv
     {
         builder.Property(r => r.Status).HasConversion<short>();
 
+        // Stored as the normalized string; reading it back runs the LicensePlate checks again.
+        builder.Property(r => r.Plate).HasConversion(plate => plate.Value, value => new LicensePlate(value));
+
+        builder.Property(r => r.Price).HasPrecision(10, 2);
+
+        // Reservations are history: deleting a space or a user must not silently delete them (I2).
         builder.HasOne(r => r.Space)
             .WithMany()
             .HasForeignKey(r => r.SpaceId)
+            .OnDelete(DeleteBehavior.Restrict)
+            // Explicit: the naming convention builds this name before ParkingSpaceConfiguration renames
+            // the table, which gave fk_reservations_parking_space_space_id.
+            .HasConstraintName("fk_reservations_parking_spaces_space_id");
+
+        builder.HasOne<IdentityUser<Guid>>()
+            .WithMany()
+            .HasForeignKey(r => r.UserId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // UserId, Plate, Price and Currency are part of the domain model (CP-010) but have no columns yet.
-        // Ignoring them keeps the model equal to the InitialCreate snapshot; the reservation mapping
-        // adds the columns with a migration. Interval is computed from StartTime and EndTime.
-        builder.Ignore(r => r.UserId);
-        builder.Ignore(r => r.Plate);
-        builder.Ignore(r => r.Price);
-        builder.Ignore(r => r.Currency);
+        // Computed from StartTime and EndTime.
         builder.Ignore(r => r.Interval);
     }
 }
