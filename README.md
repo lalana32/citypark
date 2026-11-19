@@ -94,3 +94,43 @@ docker compose down -v
 ```
 
 `-v` also removes the volume, so the next start creates an empty database.
+
+## Database migrations
+
+The schema is created by EF Core migrations in `src/CityPark.Infrastructure/Persistence/Migrations`.
+`dotnet-ef` is a local tool pinned in `dotnet-tools.json`; restore it once after cloning:
+
+```bash
+dotnet tool restore
+```
+
+### Apply
+
+With the local database running (see [Start](#start)):
+
+```bash
+dotnet ef database update --project src/CityPark.Infrastructure --startup-project src/CityPark.Infrastructure
+```
+
+The command applies every migration that is not yet in the `__EFMigrationsHistory` table, so it
+is safe to run again. By default it connects to the Compose database with the settings from
+[Connect](#connect). To target another database, set `CITYPARK_DB` to an Npgsql connection string
+first, for example in PowerShell:
+
+```powershell
+$env:CITYPARK_DB = "Host=localhost;Port=5433;Database=citypark;Username=citypark;Password=citypark"
+```
+
+Check the result with `\dt` in `psql` (see [Connect](#connect)).
+
+### Add a migration
+
+After changing an entity configuration:
+
+```bash
+dotnet ef migrations add <Name> --project src/CityPark.Infrastructure --startup-project src/CityPark.Infrastructure --output-dir Persistence/Migrations
+```
+
+Read the generated migration before committing it. Exclusion constraints are not modelled by
+EF Core and are added to a migration as raw SQL (see
+[ADR-002](docs/adr/0002-overlap-prevention-with-exclusion-constraint.md)).
