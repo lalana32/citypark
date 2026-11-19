@@ -8,6 +8,8 @@ namespace CityPark.Infrastructure.Persistence.Configurations;
 
 internal sealed class ReservationConfiguration : IEntityTypeConfiguration<Reservation>
 {
+    private const string VersionProperty = "Version";
+
     // The no-overlap rule is a PostgreSQL EXCLUDE constraint (ex_reservations_space_no_overlap) created
     // with raw SQL in the AddReservationOverlapConstraint migration; EF Core cannot model exclusion
     // constraints (ADR-002).
@@ -39,5 +41,11 @@ internal sealed class ReservationConfiguration : IEntityTypeConfiguration<Reserv
 
         // Computed from StartTime and EndTime.
         builder.Ignore(r => r.Interval);
+
+        // Optimistic concurrency on PostgreSQL's xmin system column, which changes on every update of the row.
+        // A shadow property, so the domain does not know about it; no real column is added.
+        builder.Property<uint>(VersionProperty)
+            .IsRowVersion()
+            .HasColumnName("xmin");
     }
 }

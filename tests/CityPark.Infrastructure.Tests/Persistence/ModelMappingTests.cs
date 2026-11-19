@@ -131,4 +131,15 @@ public class ModelMappingTests
     {
         Assert.Null(Entity<Reservation>().FindProperty(nameof(Reservation.Interval)));
     }
+
+    [Fact]
+    public void Reservation_UsesXminShadowPropertyAsConcurrencyToken()
+    {
+        var version = Entity<Reservation>().FindProperty("Version")!;
+
+        Assert.True(version.IsShadowProperty());
+        Assert.True(version.IsConcurrencyToken);
+        Assert.Equal("xmin", version.GetColumnName(StoreObjectIdentifier.Table("reservations")));
+        Assert.Equal("xid", version.GetColumnType());
+    }
 }
