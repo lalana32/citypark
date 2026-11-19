@@ -241,3 +241,22 @@ succeeds), broken domain rules, an inactive space, a foreign key error that stay
 `DbUpdateException`, and an unknown space.
 `tests/CityPark.Infrastructure.Tests/Persistence/PostgresDatabaseErrorsTests.cs` covers the error
 classification on its own.
+
+## Concurrency tests
+
+Added in CP-017 (2026-11-19). Twenty parallel requests per round showed that step 3 of
+[Create reservation](#create-reservation) is incomplete: two overlapping inserts can also end in
+`40P01` (`deadlock_detected`) while PostgreSQL checks the exclusion constraint, because each
+transaction waits for the other's uncommitted row. PostgreSQL aborts one of them.
+
+**Decision.** `AppDbContextOptions` enables `EnableRetryOnFailure()`, so EF Core retries transient
+errors, `40P01` included. The retried insert either succeeds or fails with `23P01` and becomes a
+`ReservationConflictException` as before. A deadlock is not mapped to a conflict directly: the
+aborted request may not overlap any reservation that is finally committed, so it would be
+rejected for a free interval.
+
+**Consequence.** A user-initiated transaction (`BeginTransaction`) must run inside
+`Database.CreateExecutionStrategy().ExecuteAsync(...)`, otherwise EF Core throws, because it
+cannot retry a transaction it did not start.
+
+The scenarios are described in [docs/testing.md](../testing.md#concurrency-tests).
