@@ -17,6 +17,8 @@ public static class DependencyInjection
         // Same scoped instance under both types: a use case and the API share one unit of work per request.
         services.AddScoped<IAppDbContext>(provider => provider.GetRequiredService<AppDbContext>());
 
+        services.AddSingleton<IDatabaseErrors, PostgresDatabaseErrors>();
+
         return services;
     }
 }
