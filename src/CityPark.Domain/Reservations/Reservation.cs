@@ -146,6 +146,28 @@ public sealed class Reservation
         return clock.GetUtcNow() >= Interval.End;
     }
 
+    /// <summary>
+    /// Static and on plain values, so a query can call it on projected columns without loading the entity.
+    /// Cancelled wins over time; the end is exclusive.
+    /// </summary>
+    public static ReservationState StateAt(ReservationStatus status, DateTime startUtc, DateTime endUtc, DateTimeOffset now)
+    {
+        if (status == ReservationStatus.Cancelled)
+        {
+            return ReservationState.Cancelled;
+        }
+
+        var start = new DateTimeOffset(startUtc, TimeSpan.Zero);
+        var end = new DateTimeOffset(endUtc, TimeSpan.Zero);
+
+        if (now < start)
+        {
+            return ReservationState.Upcoming;
+        }
+
+        return now < end ? ReservationState.InProgress : ReservationState.Finished;
+    }
+
     /// <summary>R9 and I9: only Active → Cancelled.</summary>
     public void Cancel(CancellationActor actor, TimeProvider clock)
     {
