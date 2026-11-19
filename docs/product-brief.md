@@ -122,6 +122,7 @@ All times are evaluated in the city's time zone (**Europe/Sarajevo**) and stored
 | **Opening hours** | The daily time window (`opens_at`–`closes_at`) in which a lot accepts reservations. Same every day | The reservation interval |
 | **Reservation** | A claim on one space for one interval by one customer and one vehicle, with a stored price | – |
 | **Reservation status** | Active or Cancelled. Other states are derived from time | – |
+| **Reservation state** | What the customer sees: Upcoming, InProgress, Finished or Cancelled. Derived from the status and the current time, never stored ([API contract](api.md#own-reservations)) | Reservation status |
 | **Availability** | Number of active spaces without an overlapping Active reservation for a given interval | Capacity |
 | **Time grid** | The 15-minute steps at which reservations start and end | Billing unit |
 | **Billed hour** | A started hour, billed in full | Actual duration |

@@ -6,6 +6,7 @@ Layered monolith built on .NET 10 (see [ADR-001](docs/adr/0001-monolith-with-fou
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch, commit and pull request workflow.
 Architecture decisions are recorded in the [ADR index](docs/adr/README.md).
+The contract of the use cases, including pagination, is in [docs/api.md](docs/api.md).
 
 ## Solution layout
 
