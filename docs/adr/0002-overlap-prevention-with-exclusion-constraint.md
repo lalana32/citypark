@@ -190,3 +190,54 @@ checks that the constraint is in `pg_constraint` with `contype = 'x'`, that migr
 `InitialCreate` removes only the constraint, and that the migration applies to a table with
 touching Active and overlapping Cancelled reservations. Each test that moves the schema uses its
 own database in the shared Testcontainers server.
+
+## Create reservation
+
+Added in CP-016 (2026-11-19). `CreateReservationService.CreateAsync(userId, spaceId, start, end,
+plate)` in `CityPark.Application/Reservations` reserves one given space. Choosing a free space
+for a lot and trying the next candidate after a conflict, as described in [Decision](#decision),
+builds on it and is not part of CP-016.
+
+```mermaid
+sequenceDiagram
+    participant S as CreateReservationService
+    participant D as Domain
+    participant DB as PostgreSQL
+    S->>D: new TimeInterval, new LicensePlate
+    D-->>S: DomainException if invalid
+    S->>DB: SELECT lot with its spaces, by space id
+    DB-->>S: none → NotFoundException
+    S->>S: inactive space → DomainException (R11)
+    S->>D: Reservation.Create (R1–R5, price snapshot R8)
+    D-->>S: DomainException if a rule is broken
+    S->>DB: INSERT reservation (SaveChanges, READ COMMITTED)
+    alt inserted
+        DB-->>S: ok → Active reservation
+    else 23P01 on ex_reservations_space_no_overlap
+        DB-->>S: DbUpdateException → ReservationConflictException
+    else any other database error
+        DB-->>S: DbUpdateException, rethrown unchanged
+    end
+```
+
+1. **Validation first.** The interval, the plate and the domain rules are checked before
+   anything is written, so a broken rule throws `DomainException` and leaves no row behind.
+2. **Unknown space.** A space id that no lot contains throws `NotFoundException`.
+3. **No availability check before the insert.** Two parallel requests could both pass it. The
+   insert itself is the check: under the default READ COMMITTED isolation a second overlapping
+   insert waits for the first transaction, then fails with `23P01`.
+4. **Conflict mapping.** `catch (DbUpdateException ex) when (databaseErrors.IsSpaceOverlapViolation(ex))`
+   turns only that error into `ReservationConflictException`, a `DomainConflictException` that the
+   API will map to `409 Conflict`. The exception filter means every other error is never caught,
+   so it keeps its original type and stack trace.
+5. **No Npgsql in Application.** `IDatabaseErrors` is declared in Application and implemented by
+   `PostgresDatabaseErrors` in Infrastructure, which checks `SqlState` and `ConstraintName`. The
+   name matters: the plate constraint (R7) will raise `23P01` too.
+
+**Tests.** `tests/CityPark.Infrastructure.Tests/Reservations/CreateReservationServiceTests.cs`
+runs against PostgreSQL 17: a valid request, an overlapping and a touching interval on the same
+space, the same interval on another space, two simultaneous overlapping requests (exactly one
+succeeds), broken domain rules, an inactive space, a foreign key error that stays a
+`DbUpdateException`, and an unknown space.
+`tests/CityPark.Infrastructure.Tests/Persistence/PostgresDatabaseErrorsTests.cs` covers the error
+classification on its own.
