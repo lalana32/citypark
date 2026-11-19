@@ -12,6 +12,9 @@ internal sealed class ReservationConfiguration : IEntityTypeConfiguration<Reserv
     // with raw SQL in the InitialCreate migration; EF Core cannot model exclusion constraints (ADR-002).
     public void Configure(EntityTypeBuilder<Reservation> builder)
     {
+        // Assigned by Reservation.Create (Guid v7), never by EF Core or the database.
+        builder.Property(r => r.Id).ValueGeneratedNever();
+
         builder.Property(r => r.Status).HasConversion<short>();
 
         // Stored as the normalized string; reading it back runs the LicensePlate checks again.

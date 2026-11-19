@@ -9,6 +9,10 @@ internal sealed class ParkingLotConfiguration : IEntityTypeConfiguration<Parking
 {
     public void Configure(EntityTypeBuilder<ParkingLot> builder)
     {
+        // The domain assigns Guid v7 keys itself. EF Core's default for Guid keys is "generated on add",
+        // which makes it treat any entity found with a non-empty key as an existing row.
+        builder.Property(l => l.Id).ValueGeneratedNever();
+
         // Rate and OpeningHours are value objects without identity: complex properties store them as
         // columns of parking_lots instead of separate tables (product brief, section 8).
         builder.ComplexProperty(l => l.Rate, rate =>
