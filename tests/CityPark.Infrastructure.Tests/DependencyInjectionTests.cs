@@ -21,6 +21,16 @@ public class DependencyInjectionTests
         Assert.Same(concrete, abstraction);
     }
 
+    [Fact]
+    public void IDatabaseErrors_ResolvesToThePostgresImplementation()
+    {
+        using var provider = new ServiceCollection()
+            .AddInfrastructure("Host=unused")
+            .BuildServiceProvider(validateScopes: true);
+
+        Assert.IsType<PostgresDatabaseErrors>(provider.GetRequiredService<IDatabaseErrors>());
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
