@@ -31,6 +31,19 @@ public class DependencyInjectionTests
         Assert.IsType<PostgresDatabaseErrors>(provider.GetRequiredService<IDatabaseErrors>());
     }
 
+    [Fact]
+    public void AppDbContext_RetriesTransientFailures()
+    {
+        using var provider = new ServiceCollection()
+            .AddInfrastructure("Host=unused")
+            .BuildServiceProvider(validateScopes: true);
+        using var scope = provider.CreateScope();
+
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        Assert.True(db.Database.CreateExecutionStrategy().RetriesOnFailure);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]

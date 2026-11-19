@@ -9,7 +9,9 @@ public static class AppDbContextOptions
         ArgumentNullException.ThrowIfNull(builder);
 
         builder
-            .UseNpgsql(connectionString)
+            // Retries transient errors such as the deadlock (40P01) parallel inserts can hit on the
+            // exclusion constraint (CP-017, ADR-002).
+            .UseNpgsql(connectionString, npgsql => npgsql.EnableRetryOnFailure())
             .UseSnakeCaseNamingConvention();
     }
 
