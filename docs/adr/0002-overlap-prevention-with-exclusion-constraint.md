@@ -104,10 +104,10 @@ Validated in CP-007 (2026-11-16) against PostgreSQL 17 with EF Core 10.0.4 and N
 The work was done in the project itself instead of a throwaway prototype, and the tests stay as
 regression tests for the constraint.
 
-**Schema.** The `InitialCreate` migration creates the space constraint. `btree_gist` is declared
+**Schema.** During validation the `InitialCreate` migration created the space constraint; since
+CP-012 it lives in its own migration (see [Migration](#migration)). `btree_gist` is declared
 in the model with `modelBuilder.HasPostgresExtension("btree_gist")`, so EF Core generates
-`CREATE EXTENSION IF NOT EXISTS btree_gist;` before the tables. The constraint is raw SQL in the
-same migration:
+`CREATE EXTENSION IF NOT EXISTS btree_gist;` before the tables. The constraint is raw SQL:
 
 ```sql
 ALTER TABLE reservations
@@ -119,7 +119,7 @@ ALTER TABLE reservations
 ```
 
 `start_time` and `end_time` map to `timestamp with time zone`, which `tstzrange` requires. The
-plate constraint is not created yet, because the reservation has no plate column so far.
+plate constraint (R7) is not created yet; it follows in a later card.
 
 **Exception chain.** A rejected insert surfaces in .NET as:
 
@@ -157,3 +157,36 @@ Npgsql hides the `DETAIL` part (the conflicting key values) unless the connectio
   need a running Docker engine. With Docker Engine inside WSL and `dotnet` on Windows, the daemon
   must also listen on `tcp://127.0.0.1:2375`, and `DOCKER_HOST=tcp://localhost:2375` must be set
   on Windows. CI (`ubuntu-latest`) needs no extra setup.
+
+## Migration
+
+Added in CP-012 (2026-11-19). The space constraint has its own migration,
+`AddReservationOverlapConstraint`, instead of being part of `InitialCreate`:
+
+- **Up** runs `CREATE EXTENSION IF NOT EXISTS btree_gist;` and the `ALTER TABLE ... ADD
+  CONSTRAINT` above as raw SQL (`migrationBuilder.Sql`). `InitialCreate` already creates the
+  extension from the model; `IF NOT EXISTS` keeps the migration correct on its own.
+- **Down** drops only the constraint. The extension stays, because the model declares it and
+  `InitialCreate` owns it.
+- The model snapshot does not change, because EF Core does not know about exclusion
+  constraints. The migration was created empty with `dotnet ef migrations add` and filled by hand.
+
+**Why a separate migration.** Rolling back removes only the rule, not the whole schema, and the
+constraint can be added to a table that already holds reservations. `InitialCreate` was edited
+after it was merged, which is acceptable only because no shared or deployed database had applied
+it. A local database created before CP-012 has the constraint already, and the new migration
+fails there with `42P07` (`relation "ex_reservations_space_no_overlap" already exists`; the
+constraint is backed by a GiST index of the same name). Such a database is recreated with
+`docker compose down -v`. Once a database outside development exists, applied migrations are
+never edited again.
+
+**Existing data.** PostgreSQL checks every existing row when the constraint is added. Active
+reservations that already overlap make the migration fail, and because the migration runs in a
+transaction, nothing is changed. They must be cleaned up first. Cancelled rows are ignored
+because of `WHERE (status = 1)`.
+
+**Tests.** `tests/CityPark.Infrastructure.Tests/Persistence/ReservationOverlapConstraintMigrationTests.cs`
+checks that the constraint is in `pg_constraint` with `contype = 'x'`, that migrating back to
+`InitialCreate` removes only the constraint, and that the migration applies to a table with
+touching Active and overlapping Cancelled reservations. Each test that moves the schema uses its
+own database in the shared Testcontainers server.
