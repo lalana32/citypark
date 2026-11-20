@@ -192,6 +192,22 @@ namespace CityPark.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_asp_net_roles_normalized_name");
 
                     b.ToTable("asp_net_roles", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("0193a1c0-0000-7000-8000-00000000c001"),
+                            ConcurrencyStamp = "0193a1c0-0000-7000-8000-00000000c001",
+                            Name = "Customer",
+                            NormalizedName = "CUSTOMER"
+                        },
+                        new
+                        {
+                            Id = new Guid("0193a1c0-0000-7000-8000-00000000a001"),
+                            ConcurrencyStamp = "0193a1c0-0000-7000-8000-00000000a001",
+                            Name = "Admin",
+                            NormalizedName = "ADMIN"
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
