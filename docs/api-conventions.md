@@ -27,7 +27,9 @@ with the content type `application/problem+json`. Endpoints do not catch excepti
 | `DomainException` (any other broken business rule) | 422 Unprocessable Entity | `https://tools.ietf.org/html/rfc9110#section-15.5.21` |
 | Anything else | 500 Internal Server Error | `https://tools.ietf.org/html/rfc9110#section-15.6.1` |
 
-An unknown route also gets a 404 ProblemDetails body.
+An unknown route also gets a 404 ProblemDetails body. A request without a valid session cookie
+gets **401**, and one without the required role gets **403**, never a redirect to a login page
+([auth.md](auth.md#session-cookie)).
 
 ### Fields
 
@@ -139,5 +141,6 @@ full exception is logged at Error level, and `traceId` links the response to tha
 - `ValidationEndpoints` adds test-only routes under `/_test/validation/` that bind the real
   `CreateReservationRequest` with `.WithValidation<T>()`; one of them then runs the domain booking
   rules, so both 400 and 422 are tested through real binding.
-- `PostgresApiFactory` connects to a PostgreSQL 17 container (Testcontainers) for the healthy
-  readiness case.
+- `PostgresApiFactory` connects to a PostgreSQL 17 container (Testcontainers), migrated before
+  the API starts, for the healthy readiness case and the authentication tests
+  ([auth.md](auth.md#tests)).

@@ -8,6 +8,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch, commit and pull request w
 Architecture decisions are recorded in the [ADR index](docs/adr/README.md).
 The contract of the use cases, including pagination, is in [docs/api.md](docs/api.md).
 Routes, the error contract, health checks and OpenAPI are described in [docs/api-conventions.md](docs/api-conventions.md).
+Sign-in, the session cookie, roles and the admin account are in [docs/auth.md](docs/auth.md).
 
 ## Solution layout
 
@@ -156,7 +157,8 @@ dotnet run --project src/CityPark.Api
 - The seeder runs on every start and adds only the lots whose name is not yet in the database,
   so restarting the API does not duplicate them.
 - In any other environment (`Production`, `Staging`, ...) it does nothing.
-- No users are seeded; accounts come with authentication.
+- No demo users are seeded. The admin account comes from environment variables, see
+  [docs/auth.md](docs/auth.md#administrator-seeding).
 
 Check the result in `psql` (see [Connect](#connect)):
 
