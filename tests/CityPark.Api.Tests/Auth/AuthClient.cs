@@ -22,7 +22,7 @@ internal static class AuthClient
     public static string NewEmail() => $"user-{Guid.NewGuid():N}@example.test";
 
     // HTTPS base address: outside Development the cookie is Secure, and the client keeps it only for HTTPS.
-    public static HttpClient Create(ApiFactory factory, bool handleCookies = true) =>
+    public static HttpClient Create(WebApplicationFactory<Program> factory, bool handleCookies = true) =>
         factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             BaseAddress = new Uri("https://localhost"),
