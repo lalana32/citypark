@@ -35,8 +35,12 @@ public sealed partial class ApiExceptionHandler(
                 StatusCodes.Status404NotFound, ProblemTypes.NotFound, "The resource was not found.", exception.Message),
             DomainConflictException => Problem(
                 StatusCodes.Status409Conflict, ProblemTypes.Conflict, "The request conflicts with the current state.", exception.Message),
-            DomainException => Validation(
-                StatusCodes.Status422UnprocessableEntity, ProblemTypes.UnprocessableEntity, "A business rule was violated.", exception.Message),
+            DomainException domain => Validation(
+                StatusCodes.Status422UnprocessableEntity,
+                ProblemTypes.UnprocessableEntity,
+                "A business rule was violated.",
+                exception.Message,
+                FieldErrors(domain.Field, exception.Message)),
             _ => Unexpected(httpContext, exception),
         };
 
@@ -66,6 +70,10 @@ public sealed partial class ApiExceptionHandler(
             Title = title,
             Detail = detail,
         };
+
+    // The domain names fields in C# (Start); the client sees the JSON name it sent (start).
+    private static Dictionary<string, string[]>? FieldErrors(string? field, string message) =>
+        field is null ? null : new() { [JsonNamingPolicy.CamelCase.ConvertName(field)] = [message] };
 
     // Minimal API binding throws this for a body that is not JSON or has a value of the wrong type
     // (RouteHandlerOptions.ThrowOnBadRequest), and also for 413 or 415.
