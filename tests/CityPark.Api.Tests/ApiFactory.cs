@@ -24,6 +24,9 @@ public class ApiFactory : WebApplicationFactory<Program>
 
         builder.UseEnvironment(Environments.Production);
         builder.UseSetting("ConnectionStrings:CityPark", ConnectionString);
+        // Admin__Email or Admin__Password set on the developer machine must not reach the tests.
+        builder.UseSetting("Admin:Email", string.Empty);
+        builder.UseSetting("Admin:Password", string.Empty);
         builder.ConfigureServices(services => services
             .AddSingleton<IStartupFilter, ThrowingEndpoints>()
             .AddSingleton<IStartupFilter, ValidationEndpoints>()
