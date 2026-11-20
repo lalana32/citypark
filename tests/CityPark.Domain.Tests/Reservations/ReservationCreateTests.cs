@@ -76,9 +76,13 @@ public class ReservationCreateTests
 
     // R1: time grid.
     [Fact]
-    public void Create_WhenStartIsOffGrid_ThrowsDomainException()
+    public void Create_WhenStartIsOffGrid_ThrowsDomainExceptionForStart()
     {
-        Assert.Throws<DomainException>(() => Create(Today(10, 10), Today(11, 15)));
+        var exception = Assert.Throws<DomainException>(() => Create(Today(10, 10), Today(11, 15)));
+
+        Assert.Equal(nameof(TimeInterval.Start), exception.Field);
+        Assert.Contains("15-minute grid", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("(R1)", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -90,9 +94,11 @@ public class ReservationCreateTests
     }
 
     [Fact]
-    public void Create_WhenEndIsOffGrid_ThrowsDomainException()
+    public void Create_WhenEndIsOffGrid_ThrowsDomainExceptionForEnd()
     {
-        Assert.Throws<DomainException>(() => Create(Today(10), Today(11, 10)));
+        var exception = Assert.Throws<DomainException>(() => Create(Today(10), Today(11, 10)));
+
+        Assert.Equal(nameof(TimeInterval.End), exception.Field);
     }
 
     [Fact]

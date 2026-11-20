@@ -10,6 +10,7 @@ public class DomainExceptionTests
         var exception = new DomainException("End must be after start.");
 
         Assert.Equal("End must be after start.", exception.Message);
+        Assert.Null(exception.Field);
     }
 
     [Fact]
