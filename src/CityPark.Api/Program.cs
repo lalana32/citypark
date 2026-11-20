@@ -1,6 +1,7 @@
 using System.Diagnostics;
 
 using CityPark.Api.Errors;
+using CityPark.Api.Health;
 using CityPark.Infrastructure;
 using CityPark.Infrastructure.Persistence.Seeding;
 
@@ -17,11 +18,16 @@ builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = 
 });
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 
+builder.Services.AddHealthChecks()
+    .AddCheck<DatabaseHealthCheck>("database", tags: [HealthEndpoints.ReadyTag], timeout: TimeSpan.FromSeconds(5));
+
 var app = builder.Build();
 
 app.UseExceptionHandler();
 // Empty error responses, such as 404 for an unknown route, get a ProblemDetails body too.
 app.UseStatusCodePages();
+
+app.MapHealthEndpoints();
 
 // Demo lots for local development; a no-op in every other environment.
 await app.Services.SeedDevelopmentDataAsync(app.Environment);
