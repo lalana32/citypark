@@ -3,12 +3,12 @@ using System.Security.Claims;
 using CityPark.Api.Errors;
 using CityPark.Api.Validation;
 using CityPark.Application.Common;
+using CityPark.Infrastructure.Identity;
 using CityPark.Infrastructure.Persistence;
 
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CityPark.Api.Auth;
 
@@ -52,28 +52,7 @@ public static class AuthenticationEndpoints
         AppDbContext db,
         CancellationToken ct)
     {
-        // User and role in one transaction, so a failure cannot leave an account without a role.
-        // The retry strategy (ADR-002) replays the whole block, so it starts from an empty change tracker.
-        var (user, result) = await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
-        {
-            db.ChangeTracker.Clear();
-            var newUser = new IdentityUser<Guid> { Id = Guid.CreateVersion7(), UserName = request.Email, Email = request.Email };
-
-            await using var transaction = await db.Database.BeginTransactionAsync(ct);
-
-            var outcome = await users.CreateAsync(newUser, request.Password!);
-            if (outcome.Succeeded)
-            {
-                outcome = await users.AddToRoleAsync(newUser, AppRoles.Customer);
-            }
-
-            if (outcome.Succeeded)
-            {
-                await transaction.CommitAsync(ct);
-            }
-
-            return (newUser, outcome);
-        });
+        var (user, result) = await users.CreateWithRoleAsync(db, request.Email!, request.Password!, AppRoles.Customer, ct);
 
         if (!result.Succeeded)
         {
