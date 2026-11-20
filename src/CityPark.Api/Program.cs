@@ -5,6 +5,7 @@ using CityPark.Api.Auth;
 using CityPark.Api.Errors;
 using CityPark.Api.Health;
 using CityPark.Infrastructure;
+using CityPark.Infrastructure.Identity;
 using CityPark.Infrastructure.Persistence.Seeding;
 
 using Scalar.AspNetCore;
@@ -53,5 +54,8 @@ app.MapApiV1()
 
 // Demo lots for local development; a no-op in every other environment.
 await app.Services.SeedDevelopmentDataAsync(app.Environment);
+
+// Every environment; skipped when the Admin__Email and Admin__Password variables are not set.
+await app.Services.SeedAdminAsync(app.Configuration[AdminSeeder.EmailKey], app.Configuration[AdminSeeder.PasswordKey]);
 
 app.Run();
