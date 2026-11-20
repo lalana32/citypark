@@ -7,7 +7,8 @@ namespace CityPark.Api.Tests;
 
 /// <summary>
 /// The real API in memory, in the Production environment, with throwing test endpoints under
-/// <see cref="ThrowingEndpoints.Prefix"/> and a validating route at <see cref="ValidationEndpoints.Reservations"/>.
+/// <see cref="ThrowingEndpoints.Prefix"/>, a validating route at <see cref="ValidationEndpoints.Reservations"/>
+/// and cookie routes in <see cref="AuthEndpoints"/>.
 /// </summary>
 public class ApiFactory : WebApplicationFactory<Program>
 {
@@ -25,6 +26,7 @@ public class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:CityPark", ConnectionString);
         builder.ConfigureServices(services => services
             .AddSingleton<IStartupFilter, ThrowingEndpoints>()
-            .AddSingleton<IStartupFilter, ValidationEndpoints>());
+            .AddSingleton<IStartupFilter, ValidationEndpoints>()
+            .AddSingleton<IStartupFilter, AuthEndpoints>());
     }
 }

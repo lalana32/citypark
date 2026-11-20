@@ -1,6 +1,7 @@
 using System.Diagnostics;
 
 using CityPark.Api;
+using CityPark.Api.Auth;
 using CityPark.Api.Errors;
 using CityPark.Api.Health;
 using CityPark.Infrastructure;
@@ -13,6 +14,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddInfrastructure(
     builder.Configuration.GetConnectionString("CityPark")
     ?? throw new InvalidOperationException("Connection string 'CityPark' is not configured."));
+
+builder.Services.AddCityParkAuthentication(builder.Environment);
 
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
 {
@@ -33,6 +36,9 @@ var app = builder.Build();
 app.UseExceptionHandler();
 // Empty error responses, such as 404 for an unknown route, get a ProblemDetails body too.
 app.UseStatusCodePages();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 // The document (/openapi/v1.json) is the public contract; the interactive UI is for developers only.
 app.MapOpenApi();

@@ -1,0 +1,60 @@
+using CityPark.Infrastructure.Persistence;
+
+using Microsoft.AspNetCore.Identity;
+
+namespace CityPark.Api.Auth;
+
+/// <summary>ASP.NET Core Identity with the application cookie as the session (ADR-003).</summary>
+public static class AuthSetup
+{
+    public const string CookieName = "citypark.auth";
+
+    public static IServiceCollection AddCityParkAuthentication(this IServiceCollection services, IHostEnvironment environment)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(environment);
+
+        services.AddAuthentication(IdentityConstants.ApplicationScheme).AddIdentityCookies();
+
+        services.AddIdentityCore<IdentityUser<Guid>>(options =>
+            {
+                options.User.RequireUniqueEmail = true;
+                options.Password.RequiredLength = 8;
+                options.Lockout.AllowedForNewUsers = true;
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+            })
+            .AddRoles<IdentityRole<Guid>>()
+            .AddEntityFrameworkStores<AppDbContext>()
+            .AddSignInManager();
+
+        services.ConfigureApplicationCookie(options =>
+        {
+            options.Cookie.Name = CookieName;
+            options.Cookie.HttpOnly = true;
+            options.Cookie.SameSite = SameSiteMode.Strict;
+            // The Vite dev server proxies over plain HTTP; every other environment is HTTPS only.
+            options.Cookie.SecurePolicy = environment.IsDevelopment()
+                ? CookieSecurePolicy.SameAsRequest
+                : CookieSecurePolicy.Always;
+            options.ExpireTimeSpan = TimeSpan.FromHours(8);
+            options.SlidingExpiration = true;
+
+            // An API has no login page: answer with the status code instead of a 302.
+            options.Events.OnRedirectToLogin = context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return Task.CompletedTask;
+            };
+            options.Events.OnRedirectToAccessDenied = context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return Task.CompletedTask;
+            };
+        });
+
+        services.AddAuthorization();
+
+        return services;
+    }
+}
