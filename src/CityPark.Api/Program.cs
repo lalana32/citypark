@@ -1,9 +1,12 @@
 using System.Diagnostics;
 
+using CityPark.Api;
 using CityPark.Api.Errors;
 using CityPark.Api.Health;
 using CityPark.Infrastructure;
 using CityPark.Infrastructure.Persistence.Seeding;
+
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,13 +24,23 @@ builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: [HealthEndpoints.ReadyTag], timeout: TimeSpan.FromSeconds(5));
 
+builder.Services.AddOpenApi();
+
 var app = builder.Build();
 
 app.UseExceptionHandler();
 // Empty error responses, such as 404 for an unknown route, get a ProblemDetails body too.
 app.UseStatusCodePages();
 
+// The document (/openapi/v1.json) is the public contract; the interactive UI is for developers only.
+app.MapOpenApi();
+if (app.Environment.IsDevelopment())
+{
+    app.MapScalarApiReference();
+}
+
 app.MapHealthEndpoints();
+app.MapApiV1();
 
 // Demo lots for local development; a no-op in every other environment.
 await app.Services.SeedDevelopmentDataAsync(app.Environment);
