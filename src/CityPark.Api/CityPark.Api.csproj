@@ -1,6 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.4" />
+    <!-- Raises the transitive 2.0.0 from Microsoft.AspNetCore.OpenApi past GHSA-v5pm-xwqc-g5wc (fixed in 2.7.5). -->
+    <PackageReference Include="Microsoft.OpenApi" Version="2.13.1" />
+    <PackageReference Include="Scalar.AspNetCore" Version="3.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\CityPark.Application\CityPark.Application.csproj" />
     <ProjectReference Include="..\CityPark.Infrastructure\CityPark.Infrastructure.csproj" />
   </ItemGroup>
