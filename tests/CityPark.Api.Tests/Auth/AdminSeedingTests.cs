@@ -4,7 +4,6 @@ using System.Text.Json;
 
 using CityPark.Infrastructure.Identity;
 
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
