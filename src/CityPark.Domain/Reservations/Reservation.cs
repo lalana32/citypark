@@ -202,7 +202,10 @@ public sealed class Reservation
         if (local.TimeOfDay.Ticks % Grid.Ticks != 0)
         {
             throw new DomainException(
-                $"{name} ({local:HH:mm:ss}) must fall on the {Grid.TotalMinutes}-minute grid (:00, :15, :30, :45).");
+                $"{name} ({local:HH:mm:ss}) must fall on the {Grid.TotalMinutes}-minute grid (:00, :15, :30, :45) (R1).")
+            {
+                Field = name,
+            };
         }
     }
 }
