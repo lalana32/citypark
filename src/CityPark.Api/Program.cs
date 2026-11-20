@@ -48,7 +48,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapHealthEndpoints();
-app.MapApiV1();
+app.MapApiV1()
+    .MapAuthenticationEndpoints();
 
 // Demo lots for local development; a no-op in every other environment.
 await app.Services.SeedDevelopmentDataAsync(app.Environment);

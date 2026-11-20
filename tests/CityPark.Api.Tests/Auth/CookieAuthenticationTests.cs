@@ -1,20 +1,18 @@
 using System.Net;
 
-using CityPark.Api.Auth;
 using CityPark.Application.Common;
 
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Net.Http.Headers;
 
 namespace CityPark.Api.Tests.Auth;
 
-public class CookieAuthenticationTests(ApiFactory factory) : IClassFixture<ApiFactory>
+public class CookieAuthenticationTests(PostgresApiFactory factory) : IClassFixture<PostgresApiFactory>
 {
     [Fact]
     public async Task ProtectedEndpoint_WithoutCookie_Returns401InsteadOfRedirect()
     {
         var ct = TestContext.Current.CancellationToken;
-        using var client = CreateClient();
+        using var client = AuthClient.Create(factory);
 
         using var response = await client.GetAsync(Relative(AuthEndpoints.SignedInOnly), ct);
 
@@ -27,8 +25,8 @@ public class CookieAuthenticationTests(ApiFactory factory) : IClassFixture<ApiFa
     public async Task ProtectedEndpoint_WithCookie_Returns200()
     {
         var ct = TestContext.Current.CancellationToken;
-        using var client = CreateClient();
-        await SignInAsync(client, AppRoles.Customer, ct);
+        using var client = AuthClient.Create(factory);
+        await AuthClient.SignInNewCustomerAsync(client);
 
         using var response = await client.GetAsync(Relative(AuthEndpoints.SignedInOnly), ct);
 
@@ -39,8 +37,8 @@ public class CookieAuthenticationTests(ApiFactory factory) : IClassFixture<ApiFa
     public async Task AdminEndpoint_AsCustomer_Returns403InsteadOfRedirect()
     {
         var ct = TestContext.Current.CancellationToken;
-        using var client = CreateClient();
-        await SignInAsync(client, AppRoles.Customer, ct);
+        using var client = AuthClient.Create(factory);
+        await AuthClient.SignInNewCustomerAsync(client);
 
         using var response = await client.GetAsync(Relative(AuthEndpoints.AdminOnly), ct);
 
@@ -52,8 +50,10 @@ public class CookieAuthenticationTests(ApiFactory factory) : IClassFixture<ApiFa
     public async Task AdminEndpoint_AsAdmin_Returns200()
     {
         var ct = TestContext.Current.CancellationToken;
-        using var client = CreateClient();
-        await SignInAsync(client, AppRoles.Admin, ct);
+        using var client = AuthClient.Create(factory);
+        var email = AuthClient.NewEmail();
+        await factory.CreateUserAsync(email, AuthClient.Password, AppRoles.Admin);
+        await AuthClient.LoginExpectingSuccessAsync(client, email);
 
         using var response = await client.GetAsync(Relative(AuthEndpoints.AdminOnly), ct);
 
@@ -64,35 +64,20 @@ public class CookieAuthenticationTests(ApiFactory factory) : IClassFixture<ApiFa
     [Fact]
     public async Task SessionCookie_IsHttpOnlySecureAndSameSiteStrict()
     {
-        var ct = TestContext.Current.CancellationToken;
-        using var client = CreateClient(handleCookies: false);
+        using var client = AuthClient.Create(factory, handleCookies: false);
+        var email = AuthClient.NewEmail();
+        using (var registered = await AuthClient.RegisterAsync(client, email, AuthClient.Password))
+        {
+            registered.EnsureSuccessStatusCode();
+        }
 
-        using var response = await PostSignInAsync(client, AppRoles.Customer, ct);
+        using var response = await AuthClient.LoginAsync(client, email, AuthClient.Password);
 
-        var cookie = Assert.Single(
-            SetCookieHeaderValue.ParseList([.. response.Headers.GetValues(HeaderNames.SetCookie)]),
-            c => c.Name == AuthSetup.CookieName);
+        var cookie = AuthClient.SessionCookie(response);
         Assert.True(cookie.HttpOnly);
         Assert.True(cookie.Secure);
         Assert.Equal(SameSiteMode.Strict, cookie.SameSite);
     }
-
-    // HTTPS base address: the client keeps a Secure cookie only for HTTPS requests.
-    private HttpClient CreateClient(bool handleCookies = true) => factory.CreateClient(new WebApplicationFactoryClientOptions
-    {
-        BaseAddress = new Uri("https://localhost"),
-        AllowAutoRedirect = false,
-        HandleCookies = handleCookies,
-    });
-
-    private static async Task SignInAsync(HttpClient client, string role, CancellationToken ct)
-    {
-        using var response = await PostSignInAsync(client, role, ct);
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
-    }
-
-    private static Task<HttpResponseMessage> PostSignInAsync(HttpClient client, string role, CancellationToken ct) =>
-        client.PostAsync(Relative($"{AuthEndpoints.SignIn}?role={role}"), content: null, ct);
 
     private static Uri Relative(string path) => new(path, UriKind.Relative);
 }

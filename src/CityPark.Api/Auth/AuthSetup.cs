@@ -53,6 +53,10 @@ public static class AuthSetup
             };
         });
 
+        // Checks the cookie's security stamp against the database on every request (default: every
+        // 30 minutes), so logout rejects a copied cookie at once. Cost: one user lookup per request.
+        services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.Zero);
+
         services.AddAuthorization();
 
         return services;
