@@ -1,6 +1,6 @@
 # API contract
 
-This file describes the contract of the use cases that the HTTP API will expose. Endpoints are added by later cards; the rules here hold for them.
+This file describes the contract of the use cases that the HTTP API will expose. Endpoints are added by later cards; the rules here hold for them. Routes, the error contract and health checks are in [api-conventions.md](api-conventions.md).
 
 ## Pagination
 
