@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using CityPark.Application.Common;
 using CityPark.Domain.Common;
 
@@ -26,8 +28,9 @@ public sealed partial class ApiExceptionHandler(
         // DomainConflictException derives from DomainException, so it must be matched first.
         var problem = exception switch
         {
-            RequestValidationException => Validation(
-                StatusCodes.Status400BadRequest, ProblemTypes.BadRequest, "The request is invalid.", exception.Message),
+            RequestValidationException validation => Validation(
+                StatusCodes.Status400BadRequest, ProblemTypes.BadRequest, "The request is invalid.", exception.Message, validation.Errors),
+            BadHttpRequestException badRequest => Unreadable(badRequest),
             NotFoundException => Problem(
                 StatusCodes.Status404NotFound, ProblemTypes.NotFound, "The resource was not found.", exception.Message),
             DomainConflictException => Problem(
@@ -50,14 +53,37 @@ public sealed partial class ApiExceptionHandler(
     private static ProblemDetails Problem(int status, string type, string title, string detail) =>
         new() { Status = status, Type = type, Title = title, Detail = detail };
 
-    private static HttpValidationProblemDetails Validation(int status, string type, string title, string detail) =>
-        new(new Dictionary<string, string[]> { [GeneralErrorKey] = [detail] })
+    private static HttpValidationProblemDetails Validation(
+        int status,
+        string type,
+        string title,
+        string detail,
+        IReadOnlyDictionary<string, string[]>? errors = null) =>
+        new(errors ?? new Dictionary<string, string[]> { [GeneralErrorKey] = [detail] })
         {
             Status = status,
             Type = type,
             Title = title,
             Detail = detail,
         };
+
+    // Minimal API binding throws this for a body that is not JSON or has a value of the wrong type
+    // (RouteHandlerOptions.ThrowOnBadRequest), and also for 413 or 415.
+    private static ProblemDetails Unreadable(BadHttpRequestException exception)
+    {
+        if (exception.StatusCode != StatusCodes.Status400BadRequest)
+        {
+            return new ProblemDetails { Status = exception.StatusCode };
+        }
+
+        // The framework message names C# parameter types, so the client gets its own text instead.
+        var errors = exception.InnerException is JsonException { Path: { } path } && path.StartsWith("$.", StringComparison.Ordinal)
+            ? new Dictionary<string, string[]> { [path[2..]] = ["The value has the wrong JSON type or format."] }
+            : new Dictionary<string, string[]> { [GeneralErrorKey] = ["The request body is missing or is not valid JSON."] };
+
+        return Validation(
+            StatusCodes.Status400BadRequest, ProblemTypes.BadRequest, "The request is invalid.", "The request could not be read.", errors);
+    }
 
     private ProblemDetails Unexpected(HttpContext httpContext, Exception exception)
     {

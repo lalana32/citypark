@@ -10,4 +10,15 @@ public class RequestValidationException : Exception
         : base(message)
     {
     }
+
+    public RequestValidationException(string message, IReadOnlyDictionary<string, string[]> errors)
+        : base(message)
+    {
+        ArgumentNullException.ThrowIfNull(errors);
+
+        Errors = errors;
+    }
+
+    /// <summary>Field name to messages; null when the error belongs to no single field.</summary>
+    public IReadOnlyDictionary<string, string[]>? Errors { get; }
 }
