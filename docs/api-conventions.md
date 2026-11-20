@@ -20,7 +20,8 @@ with the content type `application/problem+json`. Endpoints do not catch excepti
 
 | Exception | Status | `type` |
 | --- | --- | --- |
-| `RequestValidationException` (input that cannot mean anything, for example page 0) | 400 Bad Request | `https://tools.ietf.org/html/rfc9110#section-15.5.1` |
+| `RequestValidationException` (input that cannot mean anything, for example page 0, or a request DTO that fails its DataAnnotations) | 400 Bad Request | `https://tools.ietf.org/html/rfc9110#section-15.5.1` |
+| `BadHttpRequestException` from minimal API binding: a body that is missing, not JSON, or has a value of the wrong type | 400 Bad Request (413 or 415 when binding reports those) | `https://tools.ietf.org/html/rfc9110#section-15.5.1` for 400 |
 | `NotFoundException` | 404 Not Found | `https://tools.ietf.org/html/rfc9110#section-15.5.5` |
 | `DomainConflictException`, including `ReservationConflictException` | 409 Conflict | `https://tools.ietf.org/html/rfc9110#section-15.5.10` |
 | `DomainException` (any other broken business rule) | 422 Unprocessable Entity | `https://tools.ietf.org/html/rfc9110#section-15.5.21` |
@@ -42,8 +43,37 @@ An unknown route also gets a 404 ProblemDetails body.
 
 ### Validation errors
 
-400 and 422 carry an `errors` object. An error that belongs to no single field is listed under
-the key `general`:
+400 and 422 carry an `errors` object with the same shape. Keys are the JSON (camelCase) names of
+the request fields, for example `plate`. An error that belongs to no single field is listed under
+the key `general`.
+
+| Case | Status | `errors` key |
+| --- | --- | --- |
+| A required field is missing, `null`, empty or only spaces | 400 | that field |
+| A value has the wrong JSON type or format, for example `"start": 42` | 400 | that field |
+| The body is missing or is not valid JSON | 400 | `general` |
+| The shape is valid but a business rule names a field, for example a start off the 15-minute grid (R1) | 422 | that field |
+| The shape is valid but a rule is about the request as a whole, for example the minimum duration (R2) | 422 | `general` |
+
+Unknown properties in a body are ignored, not rejected.
+
+How it works:
+
+- **Request DTOs** (for example `CreateReservationRequest`) declare the shape with DataAnnotations.
+  Value fields are nullable, so a missing field fails `[Required]` instead of silently becoming
+  `Guid.Empty` or `0001-01-01`. An endpoint opts in with `.WithValidation<TRequest>()`, which adds
+  `ValidationFilter<TRequest>` and documents the 400 response in OpenAPI. Minimal APIs have no
+  `[ApiController]`, so the filter does the automatic validation that attribute does for controllers.
+- **Shape before rules:** the filter runs before the handler, so a request with an empty plate and an
+  off-grid start gets 400, not 422.
+- **Unreadable JSON:** `RouteHandlerOptions.ThrowOnBadRequest` is on in every environment (by default
+  only Development), so binding failures reach `ApiExceptionHandler` and get the same shape. The
+  field comes from `JsonException.Path`; the framework message is not passed on because it names
+  C# types.
+- **Rule violations by field:** a `DomainException` may set `Field` (the C# name, for example
+  `Start`); the handler reports it under the camelCase key.
+
+Example of a 422:
 
 ```json
 {
@@ -106,5 +136,8 @@ full exception is logged at Error level, and `traceId` links the response to tha
 - `ApiFactory` runs in Production against an unreachable database (port 1) and adds test-only
   routes under `/_test/throw/{kind}` through an `IStartupFilter`. Those routes run after the real
   pipeline, so their exceptions pass through the real exception handler.
+- `ValidationEndpoints` adds test-only routes under `/_test/validation/` that bind the real
+  `CreateReservationRequest` with `.WithValidation<T>()`; one of them then runs the domain booking
+  rules, so both 400 and 422 are tested through real binding.
 - `PostgresApiFactory` connects to a PostgreSQL 17 container (Testcontainers) for the healthy
   readiness case.
