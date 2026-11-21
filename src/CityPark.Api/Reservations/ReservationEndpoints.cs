@@ -1,6 +1,7 @@
 using System.Security.Claims;
 
 using CityPark.Api.Auth;
+using CityPark.Api.OpenApi;
 using CityPark.Api.Validation;
 using CityPark.Application.Common;
 using CityPark.Application.Reservations;
@@ -31,21 +32,26 @@ public static class ReservationEndpoints
             .WithSummary("Reserves a space for the signed-in customer; the price is fixed now (R8).")
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict)
-            .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
+            .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)
+            .WithResponseExample(StatusCodes.Status201Created, ReservationExamples.Reservation)
+            .WithResponseExample(StatusCodes.Status409Conflict, ReservationExamples.Conflict, "application/problem+json");
 
         reservations.MapGet(string.Empty, ListAsync)
             .WithSummary("The signed-in customer's reservations, newest start first, one page at a time.")
-            .ProducesValidationProblem();
+            .ProducesValidationProblem()
+            .WithResponseExample(StatusCodes.Status200OK, ReservationExamples.Page);
 
         reservations.MapGet("/{id:guid}", GetAsync)
             .WithSummary("One of the signed-in customer's reservations. Another user's reservation is not found.")
-            .ProducesProblem(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .WithResponseExample(StatusCodes.Status200OK, ReservationExamples.Reservation);
 
         reservations.MapPost("/{id:guid}/cancel", CancelAsync)
             .WithSummary("Cancels one of the signed-in customer's reservations, at any time before it starts (R9).")
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict)
-            .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
+            .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)
+            .WithResponseExample(StatusCodes.Status422UnprocessableEntity, ReservationExamples.CancelAfterStart, "application/problem+json");
 
         return api;
     }
