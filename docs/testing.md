@@ -94,6 +94,7 @@ goes through the real HTTP pipeline against PostgreSQL 17.
 | `GET /api/v1/reservations/{id}` | 401 | 200 | 404 | 404 |
 | `POST /api/v1/reservations/{id}/cancel` | 401 | 204 | 404 | 404 |
 | Admin route (`/_test/auth/admin`) | 401 | 403 | 403 | 200 |
+| `POST /api/v1/admin/lots`, `PUT /admin/lots/{id}`, `POST /admin/lots/{id}/spaces`, `POST /admin/lots/{lotId}/spaces/{spaceId}/deactivate` | 401 | 403 | 403 | see `AdminEndpointsTests` |
 
 Notes:
 
@@ -104,8 +105,11 @@ Notes:
 - The reservation routes act only on the caller's own reservations, also for an admin. The
   product brief lets an admin view and cancel any reservation; that needs its own endpoint, which
   will get its own rows here.
-- The API has no admin endpoint yet, so the `RequireRole(Admin)` policy is tested on the
-  test-only route in `tests/CityPark.Api.Tests/AuthEndpoints.cs`.
+- The admin routes (CP-027) get `{}` as the body, which most of them reject with 400. A 403
+  proves that authorization runs before validation. The Admin column is in
+  `tests/CityPark.Api.Tests/Admin/AdminEndpointsTests.cs`, which checks each acceptance criterion
+  of the card over HTTP; the service rules are also tested against PostgreSQL in
+  `AdminLotServiceTests`.
 
 ## Error contract
 

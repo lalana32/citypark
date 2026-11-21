@@ -133,3 +133,48 @@ Request body of the create endpoint:
 `InProgress` is used instead of `Active`, so it cannot be confused with the stored status Active ([product brief, glossary](product-brief.md#7-domain-glossary)).
 
 Implemented by `OwnReservationQueryService` (`ListAsync` and `GetAsync`); tested against PostgreSQL in `OwnReservationQueryServiceTests`.
+
+## Admin: lots and spaces
+
+Inventory maintenance for the Admin role, OpenAPI tag `Admin`. Added in CP-027. Without a session cookie every route returns **401**; a signed-in customer gets **403**, before the body is validated.
+
+| Endpoint | Success | Errors |
+|---|---|---|
+| `POST /api/v1/admin/lots` | **201** with a `Location` header (`/api/v1/lots/{id}`) and the lot as the public route returns it | 400 for a missing or malformed field; **422** for a broken lot rule |
+| `PUT /api/v1/admin/lots/{id}` | 200 with the updated lot | 400; 404 for an unknown lot; 422 |
+| `POST /api/v1/admin/lots/{id}/spaces` | **201** with `id`, `label`, `isActive`; no `Location`, as there is no route for one space | 400; 404; **409** when the lot already has the label (I1); 422 for a blank label |
+| `POST /api/v1/admin/lots/{lotId}/spaces/{spaceId}/deactivate` | 204 | 404 for an unknown lot or a space of another lot; **409** while the space has Active reservations that have not ended (R12) |
+
+Body of both lot routes; `PUT` replaces all six values:
+
+```json
+{
+  "name": "Centar",
+  "address": "Ferhadija 1",
+  "hourlyPrice": 2.50,
+  "currency": "BAM",
+  "opensAt": "07:00:00",
+  "closesAt": "22:00:00"
+}
+```
+
+- **422 rules** come from the domain, with the field as the `errors` key: `hourlyPrice` positive with at most two decimals, `currency` three upper-case letters, `closesAt` after `opensAt`, `name` and `address` not blank.
+- **Labels** are trimmed and upper-cased, so `" a-01 "` and `A-01` are the same label. A duplicate is a 409 and not a 422: the input is valid, it conflicts with the lot's current spaces. Two parallel requests with the same label are stopped by the unique index `ix_parking_spaces_lot_id_label`, which the service also maps to 409.
+- **A new rate or new opening hours** apply only to new reservations. Existing reservations keep their stored price and stay valid (R13, I6).
+- **Deactivation** is blocked by every Active reservation whose end is after now, including one in progress: its car is still in the space. The 409 lists them, earliest start first, so the admin can cancel them first:
+
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.10",
+  "title": "The request conflicts with the current state.",
+  "status": 409,
+  "detail": "Space 019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e02 has 1 active reservation(s) that have not ended; cancel them first.",
+  "reservationIds": [ "019ad0a5-1b2c-7d3e-8f40-5a6b7c8d9e01" ]
+}
+```
+
+Deactivating an inactive space again returns 204. There is no route to reactivate a space or to deactivate a lot yet.
+
+**Known limit:** the deactivation check and a new reservation are not serialized. A reservation created in the milliseconds between the check and the save can land on a space that becomes inactive. Closing that gap would mean locking the space row on every reservation, which was not worth it for a rare admin action; the admin sees the reservation in the list and can cancel it.
+
+Implemented by `AdminLotService`; tested against PostgreSQL in `AdminLotServiceTests` and over HTTP in `AdminEndpointsTests`.
