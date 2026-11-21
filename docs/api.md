@@ -35,6 +35,62 @@ Each list has a total order: a business sort key followed by the unique id as a 
 
 This is offset pagination, not a snapshot. If items are added or cancelled between two page requests, later pages shift by those items. Keyset pagination would avoid that but was not needed for lists of this size.
 
+## Lots
+
+Public: no sign-in needed. Added in CP-023.
+
+| Endpoint | Returns | Errors |
+|---|---|---|
+| `GET /api/v1/lots?page=&pageSize=` | A page of lots (default `page=1`, `pageSize=20`) | 400 for page or page size below 1 |
+| `GET /api/v1/lots/{id}` | One lot | 404 for an unknown id |
+
+- **Order:** name ascending, then id.
+- **Fields:** `id`, `name`, `address`, `hourlyPrice`, `currency`, `opensAt`, `closesAt` (local Europe/Sarajevo wall-clock times, for example `"07:00:00"`), `totalSpaces` (active spaces only).
+
+```json
+{
+  "id": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7d01",
+  "name": "Centar",
+  "address": "Ferhadija 1",
+  "hourlyPrice": 2.50,
+  "currency": "BAM",
+  "opensAt": "07:00:00",
+  "closesAt": "22:00:00",
+  "totalSpaces": 30
+}
+```
+
+## Availability
+
+`GET /api/v1/lots/{id}/availability?start=...&end=...` returns the active spaces of the lot that no active reservation overlaps in `[start, end)`. Public. Added in CP-023.
+
+- **`start` and `end`** are required ISO 8601 instants **with an offset**: `2026-12-01T09:00:00Z` or `2026-12-01T10:00:00%2B01:00`. In a query string `+` means a space, so it must be sent as `%2B`. The instants are converted to UTC before any rule is checked ([ADR-004](adr/0004-utc-storage-and-sarajevo-business-day.md)).
+- The interval must pass the same booking rules as a reservation (R1 grid, R2 minimum duration, opening hours, R4 horizon, R5 start in the past), so a free space in the answer can actually be booked.
+- The response echoes `start` and `end` with the Europe/Sarajevo offset.
+
+| Case | Status | `errors` key |
+|---|---|---|
+| `start` or `end` missing | 400 | that parameter |
+| Off the 15-minute grid | 422 | `start` or `end` |
+| Shorter than 30 minutes, outside opening hours, too far ahead or in the past | 422 | `general` |
+| Unknown lot | 404 | — |
+
+```json
+{
+  "lotId": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7d01",
+  "start": "2026-12-01T10:00:00+01:00",
+  "end": "2026-12-01T11:00:00+01:00",
+  "totalSpaces": 30,
+  "availableSpaces": 2,
+  "freeSpaces": [
+    { "id": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e02", "label": "A-02" },
+    { "id": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e17", "label": "A-17" }
+  ]
+}
+```
+
+**Known limit:** a value without an offset (`2026-12-01T10:00:00`) is parsed in the server's time zone by ASP.NET Core binding, so clients must always send one.
+
 ## Own reservations
 
 The signed-in customer's reservations. Only the caller's own reservations are returned; the user id comes from the sign-in cookie, never from a parameter ([ADR-003](adr/0003-cookie-authentication-with-identity.md)).
