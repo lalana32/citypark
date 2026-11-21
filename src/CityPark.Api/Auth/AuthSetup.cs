@@ -1,3 +1,4 @@
+using CityPark.Application.Common;
 using CityPark.Infrastructure.Persistence;
 
 using Microsoft.AspNetCore.Identity;
@@ -57,7 +58,8 @@ public static class AuthSetup
         // 30 minutes), so logout rejects a copied cookie at once. Cost: one user lookup per request.
         services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.Zero);
 
-        services.AddAuthorization();
+        services.AddAuthorizationBuilder()
+            .AddPolicy(AuthPolicies.Admin, policy => policy.RequireRole(AppRoles.Admin));
 
         return services;
     }
