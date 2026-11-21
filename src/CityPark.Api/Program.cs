@@ -21,6 +21,7 @@ builder.Services.AddInfrastructure(
 builder.Services.AddApplication();
 
 builder.Services.AddCityParkAuthentication(builder.Environment);
+builder.Services.AddCityParkCsrfProtection(builder.Environment);
 
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
 {
