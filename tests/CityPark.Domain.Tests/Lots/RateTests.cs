@@ -26,6 +26,24 @@ public class RateTests
         Assert.Throws<DomainException>(() => new Rate(-2.00m, "BAM"));
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(2.005)]
+    public void Constructor_WhenPriceIsInvalid_NamesHourlyPrice(double price)
+    {
+        var error = Assert.Throws<DomainException>(() => new Rate((decimal)price, "BAM"));
+
+        Assert.Equal(nameof(Rate.HourlyPrice), error.Field);
+    }
+
+    [Fact]
+    public void Constructor_WhenCurrencyIsInvalid_NamesCurrency()
+    {
+        var error = Assert.Throws<DomainException>(() => new Rate(2.00m, "bam"));
+
+        Assert.Equal(nameof(Rate.Currency), error.Field);
+    }
+
     [Fact]
     public void Constructor_WithSmallestPositivePrice_IsValid()
     {

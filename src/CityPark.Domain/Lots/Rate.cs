@@ -13,17 +13,26 @@ public sealed record Rate
 
         if (hourlyPrice <= 0)
         {
-            throw new DomainException($"{nameof(HourlyPrice)} must be positive, but was {hourlyPrice}.");
+            throw new DomainException($"{nameof(HourlyPrice)} must be positive, but was {hourlyPrice}.")
+            {
+                Field = nameof(HourlyPrice),
+            };
         }
 
         if (decimal.Round(hourlyPrice, 2) != hourlyPrice)
         {
-            throw new DomainException($"{nameof(HourlyPrice)} must have at most two decimals, but was {hourlyPrice}.");
+            throw new DomainException($"{nameof(HourlyPrice)} must have at most two decimals, but was {hourlyPrice}.")
+            {
+                Field = nameof(HourlyPrice),
+            };
         }
 
         if (currency.Length != 3 || !currency.All(char.IsAsciiLetterUpper))
         {
-            throw new DomainException($"{nameof(Currency)} must be a three-letter upper-case ISO code, but was '{currency}'.");
+            throw new DomainException($"{nameof(Currency)} must be a three-letter upper-case ISO code, but was '{currency}'.")
+            {
+                Field = nameof(Currency),
+            };
         }
 
         HourlyPrice = hourlyPrice;

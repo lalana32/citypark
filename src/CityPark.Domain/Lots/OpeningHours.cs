@@ -12,7 +12,10 @@ public sealed record OpeningHours
     {
         if (closesAt <= opensAt)
         {
-            throw new DomainException($"{nameof(ClosesAt)} ({closesAt:HH:mm}) must be after {nameof(OpensAt)} ({opensAt:HH:mm}).");
+            throw new DomainException($"{nameof(ClosesAt)} ({closesAt:HH:mm}) must be after {nameof(OpensAt)} ({opensAt:HH:mm}).")
+            {
+                Field = nameof(ClosesAt),
+            };
         }
 
         OpensAt = opensAt;

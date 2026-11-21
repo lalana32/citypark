@@ -44,13 +44,33 @@ public sealed class ParkingLot
         return new ParkingLot(Required(name, nameof(Name)), Required(address, nameof(Address)), rate, openingHours);
     }
 
+    /// <summary>
+    /// Replaces the editable values. Existing reservations keep their price and stay valid,
+    /// because each one stores its own snapshot (R13, I6).
+    /// </summary>
+    public void Update(string name, string address, Rate rate, OpeningHours openingHours)
+    {
+        ArgumentNullException.ThrowIfNull(rate);
+        ArgumentNullException.ThrowIfNull(openingHours);
+
+        // Both strings are checked before anything changes, so a failed update leaves the lot as it was.
+        var trimmedName = Required(name, nameof(Name));
+        var trimmedAddress = Required(address, nameof(Address));
+
+        Name = trimmedName;
+        Address = trimmedAddress;
+        Rate = rate;
+        OpeningHours = openingHours;
+    }
+
     public ParkingSpace AddSpace(string label)
     {
         var normalized = ParkingSpace.NormalizeLabel(label);
 
+        // A conflict with the lot's current spaces, not bad input: the same label is fine in another lot (I1).
         if (_spaces.Exists(s => s.Label == normalized))
         {
-            throw new DomainException($"Lot '{Name}' already has a space labelled '{normalized}'.");
+            throw new DomainConflictException($"Lot '{Name}' already has a space labelled '{normalized}'.");
         }
 
         var space = new ParkingSpace(normalized);
@@ -66,7 +86,7 @@ public sealed class ParkingLot
 
         if (trimmed.Length == 0)
         {
-            throw new DomainException($"{name} must not be empty.");
+            throw new DomainException($"{name} must not be empty.") { Field = name };
         }
 
         return trimmed;
