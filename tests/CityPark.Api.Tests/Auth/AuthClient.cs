@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 
 using CityPark.Api.Auth;
+using CityPark.Application.Common;
 
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Mvc.Testing.Handlers;
@@ -54,6 +55,17 @@ internal static class AuthClient
             registered.EnsureSuccessStatusCode();
         }
 
+        await LoginExpectingSuccessAsync(client, email);
+        return email;
+    }
+
+    /// <summary>Creates a new admin directly (registration only ever gives Customer) and signs the client in.</summary>
+    public static async Task<string> SignInNewAdminAsync(PostgresApiFactory factory, HttpClient client)
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+
+        var email = NewEmail();
+        await factory.CreateUserAsync(email, Password, AppRoles.Admin);
         await LoginExpectingSuccessAsync(client, email);
         return email;
     }

@@ -22,6 +22,19 @@ public class AuthorizationMatrixTests(ClockedApiFactory factory) : IClassFixture
         { "GET", $"/api/v1/reservations/{AnyId}" },
         { "POST", $"/api/v1/reservations/{AnyId}/cancel" },
         { "GET", AuthEndpoints.AdminOnly },
+        { "POST", "/api/v1/admin/lots" },
+        { "PUT", $"/api/v1/admin/lots/{AnyId}" },
+        { "POST", $"/api/v1/admin/lots/{AnyId}/spaces" },
+        { "POST", $"/api/v1/admin/lots/{AnyId}/spaces/{AnyId}/deactivate" },
+    };
+
+    public static TheoryData<string, string> AdminEndpoints => new()
+    {
+        { "GET", AuthEndpoints.AdminOnly },
+        { "POST", "/api/v1/admin/lots" },
+        { "PUT", $"/api/v1/admin/lots/{AnyId}" },
+        { "POST", $"/api/v1/admin/lots/{AnyId}/spaces" },
+        { "POST", $"/api/v1/admin/lots/{AnyId}/spaces/{AnyId}/deactivate" },
     };
 
     public static TheoryData<string, HttpStatusCode> PublicEndpoints => new()
@@ -70,13 +83,16 @@ public class AuthorizationMatrixTests(ClockedApiFactory factory) : IClassFixture
         Assert.Equal(expected, response.StatusCode);
     }
 
-    [Fact]
-    public async Task AdminEndpoint_Customer_Returns403Problem()
+    // The empty body is invalid for most of these routes: the 403 must come before validation.
+    [Theory]
+    [MemberData(nameof(AdminEndpoints))]
+    public async Task AdminEndpoint_Customer_Returns403Problem(string method, string path)
     {
         var ct = TestContext.Current.CancellationToken;
         using var client = await SignedInAsync(AppRoles.Customer);
+        using var request = Request(method, path);
 
-        using var response = await client.GetAsync(Relative(AuthEndpoints.AdminOnly), ct);
+        using var response = await client.SendAsync(request, ct);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
@@ -137,10 +153,7 @@ public class AuthorizationMatrixTests(ClockedApiFactory factory) : IClassFixture
 
         if (role == AppRoles.Admin)
         {
-            // Registration only ever gives the Customer role.
-            var email = AuthClient.NewEmail();
-            await factory.CreateUserAsync(email, AuthClient.Password, AppRoles.Admin);
-            await AuthClient.LoginExpectingSuccessAsync(client, email);
+            await AuthClient.SignInNewAdminAsync(factory, client);
         }
         else
         {
@@ -162,11 +175,11 @@ public class AuthorizationMatrixTests(ClockedApiFactory factory) : IClassFixture
         return (await response.Content.ReadFromJsonAsync<JsonElement>(ct)).GetProperty("id").GetGuid();
     }
 
-    // POST carries a JSON body like a real client: the 401 must come before the body is validated.
+    // POST and PUT carry a JSON body like a real client: 401 and 403 must come before the body is validated.
     private static HttpRequestMessage Request(string method, string path) =>
         new(new HttpMethod(method), Relative(path))
         {
-            Content = method == "POST" ? JsonContent.Create(new { }) : null,
+            Content = method is "POST" or "PUT" ? JsonContent.Create(new { }) : null,
         };
 
     private static Uri Relative(string path) => new(path, UriKind.Relative);
