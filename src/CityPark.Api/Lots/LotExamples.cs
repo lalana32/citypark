@@ -3,8 +3,6 @@ using System.Globalization;
 using CityPark.Api.Errors;
 using CityPark.Application.Common;
 
-using Microsoft.AspNetCore.Mvc;
-
 namespace CityPark.Api.Lots;
 
 /// <summary>Example bodies for the OpenAPI document, built from the real response types.</summary>
