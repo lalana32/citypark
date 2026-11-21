@@ -67,3 +67,63 @@ The card requires 20 consecutive green runs. In PowerShell:
 ```powershell
 1..20 | ForEach-Object { dotnet test --project tests/CityPark.Infrastructure.Tests; if ($LASTEXITCODE -ne 0) { throw "Run $_ failed" } }
 ```
+
+### Over HTTP
+
+Added in CP-026: `tests/CityPark.Api.Tests/Reservations/ParallelReservationHttpTests.cs`.
+
+Two signed-in customers post `[10:00, 11:30)` and `[10:30, 12:00)` for the same space, released
+together at a barrier like `ParallelRunner`. Each of 20 rounds uses a new lot and a new plate pair,
+so only the space rule (R6) can fail. Every round must give exactly one `201` and one `409`
+(`application/problem+json`), and availability for the interval must then show no free space.
+This covers the whole pipeline the service-level tests skip: cookie, CSRF, validation, the
+exception handler and the `23P01` to `409` mapping.
+
+## Authorization matrix
+
+Added in CP-026: `tests/CityPark.Api.Tests/Authorization/AuthorizationMatrixTests.cs`. Every row
+goes through the real HTTP pipeline against PostgreSQL 17.
+
+| Endpoint | Anonymous | Customer | Other customer | Admin |
+| --- | --- | --- | --- | --- |
+| `GET /api/v1/lots`, `/lots/{id}`, `/lots/{id}/availability` | open | open | open | open |
+| `GET /api/v1/auth/csrf`, `GET /health/live` | open | open | open | open |
+| `POST /api/v1/auth/register`, `/auth/login` | open, rate limited | – | – | – |
+| `POST /api/v1/auth/logout`, `GET /auth/me` | 401 | 2xx | 2xx | 2xx |
+| `POST /api/v1/reservations`, `GET /reservations` | 401 | 201 / 200 | 201 / 200 | 201 / 200 |
+| `GET /api/v1/reservations/{id}` | 401 | 200 | 404 | 404 |
+| `POST /api/v1/reservations/{id}/cancel` | 401 | 204 | 404 | 404 |
+| Admin route (`/_test/auth/admin`) | 401 | 403 | 403 | 200 |
+
+Notes:
+
+- "Open" rows assert the exact status (200, or 404 for an unknown id), so a route that is closed
+  by mistake fails the test.
+- Register and login are covered in `AuthenticationEndpointsTests` and `RateLimitingTests`.
+- Another user's reservation is `404`, not `403`, so the API never confirms that an id exists.
+- The reservation routes act only on the caller's own reservations, also for an admin. The
+  product brief lets an admin view and cancel any reservation; that needs its own endpoint, which
+  will get its own rows here.
+- The API has no admin endpoint yet, so the `RequireRole(Admin)` policy is tested on the
+  test-only route in `tests/CityPark.Api.Tests/AuthEndpoints.cs`.
+
+## Error contract
+
+Added in CP-026: `tests/CityPark.Api.Tests/Errors/ErrorContractTests.cs`. Each status comes from a
+real endpoint, because errors are written in five places: the exception handler, `TypedResults.Problem`
+in the auth handlers, the CSRF filter, `UseStatusCodePages` for 401 and 403, and the rate limiter.
+
+| Status | Scenarios |
+| --- | --- |
+| 400 | malformed JSON body, missing CSRF token, `page=0` |
+| 401 | no cookie, wrong password |
+| 403 | customer on the admin route |
+| 404 | unknown lot |
+| 409 | duplicate email, overlapping reservation |
+| 422 | weak password, start off the 15-minute grid |
+| 429 | eleventh login within the window |
+
+Every response must have content type `application/problem+json`, the status in the body, an RFC
+`type`, a `title`, the request path as `instance` and a `traceId`. The body must not contain a
+stack frame (`   at `, `.cs:line`), an exception name, `Npgsql` or connection string keys (`Host=`,
+`Username=`, `Password=`). The `500` case is covered by `ExceptionMappingTests`.
