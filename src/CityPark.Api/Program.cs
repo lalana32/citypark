@@ -5,6 +5,7 @@ using CityPark.Api.Auth;
 using CityPark.Api.Errors;
 using CityPark.Api.Health;
 using CityPark.Api.Lots;
+using CityPark.Api.Reservations;
 using CityPark.Application;
 using CityPark.Infrastructure;
 using CityPark.Infrastructure.Identity;
@@ -54,7 +55,8 @@ if (app.Environment.IsDevelopment())
 app.MapHealthEndpoints();
 app.MapApiV1()
     .MapAuthenticationEndpoints()
-    .MapLotEndpoints();
+    .MapLotEndpoints()
+    .MapReservationEndpoints();
 
 // Demo lots for local development; a no-op in every other environment.
 await app.Services.SeedDevelopmentDataAsync(app.Environment);
