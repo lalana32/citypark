@@ -65,6 +65,30 @@ public class OpenApiDocumentTests(ApiFactory factory) : IClassFixture<ApiFactory
         Assert.Subset(declared.ToHashSet(), statuses.ToHashSet());
     }
 
+    [Theory]
+    [InlineData("/api/v1/admin/lots", "post", new[] { "201", "400", "401", "403", "422" })]
+    [InlineData("/api/v1/admin/lots/{id}", "put", new[] { "200", "400", "401", "403", "404", "422" })]
+    [InlineData("/api/v1/admin/lots/{id}/spaces", "post", new[] { "201", "400", "401", "403", "404", "409", "422" })]
+    [InlineData("/api/v1/admin/lots/{lotId}/spaces/{spaceId}/deactivate", "post", new[] { "204", "401", "403", "404", "409" })]
+    public async Task AdminEndpoints_AreTaggedAdminAndDeclareEveryStatusCode(string path, string method, string[] statuses)
+    {
+        var operation = await GetOperationAsync(path, method);
+
+        Assert.Equal("Admin", Assert.Single(operation.GetProperty("tags").EnumerateArray()).GetString());
+        var declared = operation.GetProperty("responses").EnumerateObject().Select(r => r.Name);
+        Assert.Subset(declared.ToHashSet(), statuses.ToHashSet());
+    }
+
+    [Fact]
+    public async Task DeactivateSpace_Has409ExampleListingReservations()
+    {
+        var post = await GetOperationAsync("/api/v1/admin/lots/{lotId}/spaces/{spaceId}/deactivate", "post");
+
+        var example = post.GetProperty("responses").GetProperty("409")
+            .GetProperty("content").GetProperty("application/problem+json").GetProperty("example");
+        Assert.Single(example.GetProperty("reservationIds").EnumerateArray());
+    }
+
     [Fact]
     public async Task CreateReservation_HasA201ExampleWithThePrice()
     {

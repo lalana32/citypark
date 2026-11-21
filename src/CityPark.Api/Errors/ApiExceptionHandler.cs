@@ -1,5 +1,6 @@
 using System.Text.Json;
 
+using CityPark.Application.Admin;
 using CityPark.Application.Common;
 using CityPark.Domain.Common;
 
@@ -17,6 +18,9 @@ public sealed partial class ApiExceptionHandler(
     /// <summary>Errors that belong to no single field are listed under this key.</summary>
     public const string GeneralErrorKey = "general";
 
+    /// <summary>The R12 conflict lists the reservations that block a deactivation under this key.</summary>
+    public const string ReservationIdsKey = "reservationIds";
+
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
         Exception exception,
@@ -25,9 +29,10 @@ public sealed partial class ApiExceptionHandler(
         ArgumentNullException.ThrowIfNull(httpContext);
         ArgumentNullException.ThrowIfNull(exception);
 
-        // DomainConflictException derives from DomainException, so it must be matched first.
+        // More specific types first: each one derives from the next (DomainException is the base).
         var problem = exception switch
         {
+            SpaceHasActiveReservationsException blocked => BlockedDeactivation(blocked),
             RequestValidationException validation => Validation(
                 StatusCodes.Status400BadRequest, ProblemTypes.BadRequest, "The request is invalid.", exception.Message, validation.Errors),
             BadHttpRequestException badRequest => Unreadable(badRequest),
@@ -70,6 +75,14 @@ public sealed partial class ApiExceptionHandler(
             Title = title,
             Detail = detail,
         };
+
+    private static ProblemDetails BlockedDeactivation(SpaceHasActiveReservationsException exception)
+    {
+        var problem = Problem(
+            StatusCodes.Status409Conflict, ProblemTypes.Conflict, "The request conflicts with the current state.", exception.Message);
+        problem.Extensions[ReservationIdsKey] = exception.ReservationIds;
+        return problem;
+    }
 
     // The domain names fields in C# (Start); the client sees the JSON name it sent (start).
     private static Dictionary<string, string[]>? FieldErrors(string? field, string message) =>

@@ -11,6 +11,8 @@ namespace CityPark.Api.Lots;
 
 public static class LotEndpoints
 {
+    public const string Route = ApiRoutes.V1 + "/lots";
+
     public const int DefaultPageSize = 20;
 
     public static RouteGroupBuilder MapLotEndpoints(this RouteGroupBuilder api)
@@ -45,6 +47,8 @@ public static class LotEndpoints
 
         return api;
     }
+
+    public static Uri Location(Guid id) => new($"{Route}/{id}", UriKind.Relative);
 
     private static async Task<Ok<PagedResult<LotResponse>>> ListAsync(
         LotQueryService lots,

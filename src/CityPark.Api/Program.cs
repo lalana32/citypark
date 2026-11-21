@@ -1,6 +1,7 @@
 using System.Diagnostics;
 
 using CityPark.Api;
+using CityPark.Api.Admin;
 using CityPark.Api.Auth;
 using CityPark.Api.Errors;
 using CityPark.Api.Health;
@@ -60,7 +61,8 @@ app.MapHealthEndpoints();
 app.MapApiV1()
     .MapAuthenticationEndpoints()
     .MapLotEndpoints()
-    .MapReservationEndpoints();
+    .MapReservationEndpoints()
+    .MapAdminEndpoints();
 
 // Demo lots for local development; a no-op in every other environment.
 await app.Services.SeedDevelopmentDataAsync(app.Environment);
