@@ -25,14 +25,18 @@ public static class AuthenticationEndpoints
 
         auth.MapPost("/register", RegisterAsync)
             .WithValidation<RegisterRequest>()
+            .RequireRateLimiting(AuthRateLimiting.CredentialsPolicy)
             .WithSummary("Creates a customer account. It does not sign in.")
             .ProducesProblem(StatusCodes.Status409Conflict)
-            .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
+            .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         auth.MapPost("/login", LoginAsync)
             .WithValidation<LoginRequest>()
+            .RequireRateLimiting(AuthRateLimiting.CredentialsPolicy)
             .WithSummary("Signs in and sets the session cookie.")
-            .ProducesProblem(StatusCodes.Status401Unauthorized);
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         auth.MapPost("/logout", LogoutAsync)
             .RequireAuthorization()
