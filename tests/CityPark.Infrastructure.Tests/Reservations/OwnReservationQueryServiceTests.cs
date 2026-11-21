@@ -10,7 +10,7 @@ using Microsoft.Extensions.Time.Testing;
 namespace CityPark.Infrastructure.Tests.Reservations;
 
 // Each test creates its own users and lot, so tests sharing the database do not see each other's rows.
-public sealed class ListOwnReservationsServiceTests(PostgresFixture fixture) : IClassFixture<PostgresFixture>
+public sealed class OwnReservationQueryServiceTests(PostgresFixture fixture) : IClassFixture<PostgresFixture>
 {
     private static readonly TimeZoneInfo Sarajevo = TimeZoneInfo.FindSystemTimeZoneById("Europe/Sarajevo");
 
@@ -144,7 +144,7 @@ public sealed class ListOwnReservationsServiceTests(PostgresFixture fixture) : I
         await SaveAsync([reservation], ct);
 
         await using var db = fixture.CreateDbContext();
-        var result = await new ListOwnReservationsService(db, new FakeTimeProvider(BookedAt))
+        var result = await new OwnReservationQueryService(db, new FakeTimeProvider(BookedAt))
             .ListAsync(caller, new PageRequest(1, 20), ct);
 
         var item = Assert.Single(result.Items);
@@ -156,6 +156,41 @@ public sealed class ListOwnReservationsServiceTests(PostgresFixture fixture) : I
         Assert.Equal(4.00m, item.Price); // 1.5 h → 2 billed hours at 2.00 (R8)
         Assert.Equal("BAM", item.Currency);
         Assert.Empty(db.ChangeTracker.Entries());
+    }
+
+    [Fact]
+    public async Task Get_OwnReservation_ReturnsItWithTheDerivedState()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (lot, spaces) = await CreateLotAsync(1, ct);
+        var caller = await CreateUserAsync(ct);
+        var reservation = Book(lot, spaces[0], caller, Local(2, 10), Local(2, 11));
+        await SaveAsync([reservation], ct);
+
+        var item = await GetAsync(reservation.Id, caller, Local(2, 10, 30), ct);
+
+        Assert.Equal(reservation.Id, item.Id);
+        Assert.Equal(lot.Name, item.LotName);
+        Assert.Equal(2.00m, item.Price);
+        Assert.Equal(ReservationState.InProgress, item.State);
+    }
+
+    [Fact]
+    public async Task Get_AnotherUsersReservation_ThrowsTheSameNotFoundAsAnUnknownId()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (lot, spaces) = await CreateLotAsync(1, ct);
+        var owner = await CreateUserAsync(ct);
+        var stranger = await CreateUserAsync(ct);
+        var reservation = Book(lot, spaces[0], owner, Local(2, 10), Local(2, 11));
+        await SaveAsync([reservation], ct);
+        var unknownId = Guid.CreateVersion7();
+
+        var foreign = await Assert.ThrowsAsync<NotFoundException>(() => GetAsync(reservation.Id, stranger, BookedAt, ct));
+        var unknown = await Assert.ThrowsAsync<NotFoundException>(() => GetAsync(unknownId, owner, BookedAt, ct));
+
+        Assert.Equal($"Reservation {reservation.Id} was not found.", foreign.Message);
+        Assert.Equal($"Reservation {unknownId} was not found.", unknown.Message);
     }
 
     private static Dictionary<Guid, ReservationState> StatesById(PagedResult<OwnReservation> result) =>
@@ -189,8 +224,14 @@ public sealed class ListOwnReservationsServiceTests(PostgresFixture fixture) : I
         Guid userId, int page, int pageSize, DateTimeOffset now, CancellationToken ct)
     {
         await using var db = fixture.CreateDbContext();
-        var service = new ListOwnReservationsService(db, new FakeTimeProvider(now));
+        var service = new OwnReservationQueryService(db, new FakeTimeProvider(now));
         return await service.ListAsync(userId, new PageRequest(page, pageSize), ct);
+    }
+
+    private async Task<OwnReservation> GetAsync(Guid reservationId, Guid userId, DateTimeOffset now, CancellationToken ct)
+    {
+        await using var db = fixture.CreateDbContext();
+        return await new OwnReservationQueryService(db, new FakeTimeProvider(now)).GetAsync(reservationId, userId, ct);
     }
 
     private async Task SaveAsync(Reservation[] reservations, CancellationToken ct)

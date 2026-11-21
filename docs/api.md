@@ -108,4 +108,4 @@ The signed-in customer's reservations. Only the caller's own reservations are re
 
 `InProgress` is used instead of `Active`, so it cannot be confused with the stored status Active ([product brief, glossary](product-brief.md#7-domain-glossary)).
 
-Implemented by `ListOwnReservationsService`; tested against PostgreSQL in `ListOwnReservationsServiceTests`.
+Implemented by `OwnReservationQueryService` (`ListAsync` and `GetAsync`); tested against PostgreSQL in `OwnReservationQueryServiceTests`.
