@@ -4,6 +4,8 @@ using CityPark.Api;
 using CityPark.Api.Auth;
 using CityPark.Api.Errors;
 using CityPark.Api.Health;
+using CityPark.Api.Lots;
+using CityPark.Application;
 using CityPark.Infrastructure;
 using CityPark.Infrastructure.Identity;
 using CityPark.Infrastructure.Persistence.Seeding;
@@ -15,6 +17,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddInfrastructure(
     builder.Configuration.GetConnectionString("CityPark")
     ?? throw new InvalidOperationException("Connection string 'CityPark' is not configured."));
+builder.Services.AddApplication();
 
 builder.Services.AddCityParkAuthentication(builder.Environment);
 
@@ -50,7 +53,8 @@ if (app.Environment.IsDevelopment())
 
 app.MapHealthEndpoints();
 app.MapApiV1()
-    .MapAuthenticationEndpoints();
+    .MapAuthenticationEndpoints()
+    .MapLotEndpoints();
 
 // Demo lots for local development; a no-op in every other environment.
 await app.Services.SeedDevelopmentDataAsync(app.Environment);
