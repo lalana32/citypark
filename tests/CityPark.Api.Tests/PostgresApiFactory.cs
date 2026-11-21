@@ -9,7 +9,7 @@ using Testcontainers.PostgreSql;
 namespace CityPark.Api.Tests;
 
 /// <summary>The API connected to a real PostgreSQL 17 container, migrated before the API starts.</summary>
-public sealed class PostgresApiFactory : ApiFactory, IAsyncLifetime
+public class PostgresApiFactory : ApiFactory, IAsyncLifetime
 {
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:17").Build();
 
