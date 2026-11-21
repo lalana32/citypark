@@ -93,7 +93,31 @@ Public: no sign-in needed. Added in CP-023.
 
 ## Own reservations
 
-The signed-in customer's reservations. Only the caller's own reservations are returned; the user id comes from the sign-in cookie, never from a parameter ([ADR-003](adr/0003-cookie-authentication-with-identity.md)).
+The signed-in customer's reservations. Only the caller's own reservations are returned; the user id comes from the sign-in cookie, never from a parameter ([ADR-003](adr/0003-cookie-authentication-with-identity.md)). Added in CP-024.
+
+Every endpoint requires sign-in: without a valid session cookie it returns **401**.
+
+| Endpoint | Success | Errors |
+|---|---|---|
+| `POST /api/v1/reservations` | **201** with a `Location` header (`/api/v1/reservations/{id}`) and the reservation, including the stored `price` | 400 for a missing or malformed field; 404 for an unknown space; **409** when the space already has an overlapping Active reservation (R6); 422 for a broken booking rule (R1–R5, R11, R14) |
+| `GET /api/v1/reservations?page=&pageSize=` | 200 with a page of own reservations (default `page=1`, `pageSize=20`) | 400 for page or page size below 1 |
+| `GET /api/v1/reservations/{id}` | 200 with the reservation | **404** for an unknown id **and for another user's reservation** |
+| `POST /api/v1/reservations/{id}/cancel` | 204 | **404** as above (the reservation stays Active); **409** when it is already cancelled; **422** once it has started (R9) |
+
+Request body of the create endpoint:
+
+```json
+{
+  "spaceId": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e02",
+  "start": "2026-12-01T10:00:00+01:00",
+  "end": "2026-12-01T11:30:00+01:00",
+  "plate": "A12-K-345"
+}
+```
+
+**Why 404 and not 403 for another user's reservation:** 403 would confirm that the id exists, so ids of other users could be probed. The owner is part of the query, so a foreign row is never even read ([product brief, R9](product-brief.md)).
+
+**Why the customer cancel ignores the Admin role:** these routes act on the caller's own reservations only. Cancelling any reservation at any time is a separate admin endpoint.
 
 - **Order:** start time descending (newest first), then id descending.
 - **Fields per item:** `id`, `lotName`, `spaceLabel`, `start`, `end` (UTC, [ADR-004](adr/0004-utc-storage-and-sarajevo-business-day.md)), `plate`, `price`, `currency`, `state`.
