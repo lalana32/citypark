@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
+using CityPark.Api.Reservations;
 using CityPark.Api.Tests.Auth;
 using CityPark.Api.Tests.Lots;
 
@@ -72,6 +73,87 @@ public class ReservationEndpointsTests(ClockedApiFactory factory) : IClassFixtur
         var problem = await second.Content.ReadFromJsonAsync<JsonElement>(ct);
         Assert.Equal(409, problem.GetProperty("status").GetInt32());
         Assert.Equal("https://tools.ietf.org/html/rfc9110#section-15.5.10", problem.GetProperty("type").GetString());
+    }
+
+    [Fact]
+    public async Task Get_OwnReservation_Returns200()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var owner = await SignedInClientAsync();
+        var id = await CreateAsync(owner, await NewSpaceAsync(ct), "A12K345", ct);
+
+        using var response = await owner.GetAsync(ReservationEndpoints.Location(id), ct);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(id, (await response.Content.ReadFromJsonAsync<JsonElement>(ct)).GetProperty("id").GetGuid());
+    }
+
+    [Fact]
+    public async Task Get_AnotherUsersReservation_Returns404()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var userA = await SignedInClientAsync();
+        using var userB = await SignedInClientAsync();
+        var id = await CreateAsync(userA, await NewSpaceAsync(ct), "A12K345", ct);
+
+        using var response = await userB.GetAsync(ReservationEndpoints.Location(id), ct);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task List_ReturnsOnlyOwnItemsWithPageMetadata()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var userA = await SignedInClientAsync();
+        using var userB = await SignedInClientAsync();
+        HashSet<Guid> own =
+        [
+            await CreateAsync(userA, await NewSpaceAsync(ct), "A12K345", ct),
+            await CreateAsync(userA, await NewSpaceAsync(ct), "E12K345", ct),
+        ];
+        await CreateAsync(userB, await NewSpaceAsync(ct), "J12K345", ct);
+
+        var first = await userA.GetFromJsonAsync<JsonElement>(new Uri("/api/v1/reservations?page=1&pageSize=1", UriKind.Relative), ct);
+        var second = await userA.GetFromJsonAsync<JsonElement>(new Uri("/api/v1/reservations?page=2&pageSize=1", UriKind.Relative), ct);
+
+        Assert.Equal(1, first.GetProperty("page").GetInt32());
+        Assert.Equal(1, first.GetProperty("pageSize").GetInt32());
+        Assert.Equal(2, first.GetProperty("totalCount").GetInt32());
+        Assert.Equal(2, first.GetProperty("totalPages").GetInt32());
+
+        // Both pages together are exactly user A's reservations; user B's is on neither.
+        var listed = new[] { first, second }
+            .SelectMany(p => p.GetProperty("items").EnumerateArray())
+            .Select(i => i.GetProperty("id").GetGuid());
+        Assert.Equal(own.Order(), listed.Order());
+    }
+
+    [Fact]
+    public async Task List_WithoutCookie_Returns401()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var client = AuthClient.Create(factory);
+
+        using var response = await client.GetAsync(Reservations, ct);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    private async Task<HttpClient> SignedInClientAsync()
+    {
+        var client = AuthClient.Create(factory);
+        await AuthClient.SignInNewCustomerAsync(client);
+        return client;
+    }
+
+    // Books 10:00–11:30 local on the given space and returns the new id.
+    private static async Task<Guid> CreateAsync(HttpClient client, Guid spaceId, string plate, CancellationToken ct)
+    {
+        using var response = await client.PostAsJsonAsync(Reservations, Body(spaceId, Start, End, plate), ct);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        return (await response.Content.ReadFromJsonAsync<JsonElement>(ct)).GetProperty("id").GetGuid();
     }
 
     private static object Body(Guid spaceId, string start, string end, string plate) =>
