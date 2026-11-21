@@ -1,5 +1,6 @@
 using CityPark.Application.Availability;
 using CityPark.Application.Lots;
+using CityPark.Application.Reservations;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -21,6 +22,9 @@ public static class DependencyInjection
 
         services.AddScoped<LotQueryService>();
         services.AddScoped<AvailabilityService>();
+        services.AddScoped<CreateReservationService>();
+        services.AddScoped<CancelReservationService>();
+        services.AddScoped<OwnReservationQueryService>();
 
         return services;
     }
