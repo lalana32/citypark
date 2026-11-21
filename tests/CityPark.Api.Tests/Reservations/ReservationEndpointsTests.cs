@@ -5,6 +5,11 @@ using System.Text.Json;
 using CityPark.Api.Reservations;
 using CityPark.Api.Tests.Auth;
 using CityPark.Api.Tests.Lots;
+using CityPark.Domain.Reservations;
+using CityPark.Infrastructure.Persistence;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 
 namespace CityPark.Api.Tests.Reservations;
 
@@ -139,6 +144,99 @@ public class ReservationEndpointsTests(ClockedApiFactory factory) : IClassFixtur
         using var response = await client.GetAsync(Reservations, ct);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Cancel_OwnReservationBeforeItStarts_Returns204()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var owner = await SignedInClientAsync();
+        var id = await CreateAsync(owner, await NewSpaceAsync(ct), "A12K345", ct);
+
+        using var response = await owner.PostAsync(Cancel(id), content: null, ct);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal("Cancelled", await StateAsync(owner, id, ct));
+    }
+
+    [Fact]
+    public async Task Cancel_AnotherUsersReservation_Returns404AndItStaysActive()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var userA = await SignedInClientAsync();
+        using var userB = await SignedInClientAsync();
+        var id = await CreateAsync(userA, await NewSpaceAsync(ct), "A12K345", ct);
+
+        using var response = await userB.PostAsync(Cancel(id), content: null, ct);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("Upcoming", await StateAsync(userA, id, ct));
+    }
+
+    [Fact]
+    public async Task Cancel_AfterTheStart_Returns422NamingR9()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var owner = await SignedInClientAsync();
+
+        // 07:45–08:45 local, booked at 07:30, so at "now" (08:00) it started 15 minutes ago.
+        // The API cannot create it: R5 rejects a start that far in the past.
+        var id = await AddStartedReservationAsync(await UserIdAsync(owner, ct), ct);
+
+        using var response = await owner.PostAsync(Cancel(id), content: null, ct);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
+        Assert.Contains("(R9)", problem.GetProperty("detail").GetString(), StringComparison.Ordinal);
+        Assert.Equal("InProgress", await StateAsync(owner, id, ct));
+    }
+
+    [Fact]
+    public async Task Cancel_Twice_Returns409()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var owner = await SignedInClientAsync();
+        var id = await CreateAsync(owner, await NewSpaceAsync(ct), "A12K345", ct);
+        using (var first = await owner.PostAsync(Cancel(id), content: null, ct))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, first.StatusCode);
+        }
+
+        using var second = await owner.PostAsync(Cancel(id), content: null, ct);
+
+        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
+    }
+
+    private static Uri Cancel(Guid id) => new($"/api/v1/reservations/{id}/cancel", UriKind.Relative);
+
+    private static async Task<string?> StateAsync(HttpClient client, Guid id, CancellationToken ct) =>
+        (await client.GetFromJsonAsync<JsonElement>(ReservationEndpoints.Location(id), ct)).GetProperty("state").GetString();
+
+    private static async Task<Guid> UserIdAsync(HttpClient client, CancellationToken ct) =>
+        (await client.GetFromJsonAsync<JsonElement>(AuthClient.Me, ct)).GetProperty("id").GetGuid();
+
+    // Written straight to the database with an earlier clock, like a reservation made before "now".
+    private async Task<Guid> AddStartedReservationAsync(Guid userId, CancellationToken ct)
+    {
+        var lot = await TestLots.AddAsync(factory, TestLots.UniqueName("Centar"), spaces: 1, inactiveSpaces: 0, ct);
+        var bookedAt = ClockedApiFactory.Now.AddMinutes(-30);
+        var start = ClockedApiFactory.Now.AddMinutes(-15);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var reservation = Reservation.Create(
+            lot,
+            lot.Spaces.Single(),
+            new TimeInterval(start, start.AddHours(1)),
+            new LicensePlate("A12K345"),
+            userId,
+            scope.ServiceProvider.GetRequiredService<TimeZoneInfo>(),
+            new FakeTimeProvider(bookedAt));
+
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Reservations.Add(reservation);
+        await db.SaveChangesAsync(ct);
+
+        return reservation.Id;
     }
 
     private async Task<HttpClient> SignedInClientAsync()
