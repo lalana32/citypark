@@ -6,6 +6,7 @@ using CityPark.Application.Common;
 using CityPark.Infrastructure.Identity;
 using CityPark.Infrastructure.Persistence;
 
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -24,14 +25,18 @@ public static class AuthenticationEndpoints
 
         auth.MapPost("/register", RegisterAsync)
             .WithValidation<RegisterRequest>()
+            .RequireRateLimiting(AuthRateLimiting.CredentialsPolicy)
             .WithSummary("Creates a customer account. It does not sign in.")
             .ProducesProblem(StatusCodes.Status409Conflict)
-            .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
+            .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         auth.MapPost("/login", LoginAsync)
             .WithValidation<LoginRequest>()
+            .RequireRateLimiting(AuthRateLimiting.CredentialsPolicy)
             .WithSummary("Signs in and sets the session cookie.")
-            .ProducesProblem(StatusCodes.Status401Unauthorized);
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         auth.MapPost("/logout", LogoutAsync)
             .RequireAuthorization()
@@ -43,8 +48,15 @@ public static class AuthenticationEndpoints
             .WithSummary("The signed-in user and their roles.")
             .ProducesProblem(StatusCodes.Status401Unauthorized);
 
+        auth.MapGet("/csrf", IssueCsrfToken)
+            .WithSummary("Issues the token for the X-XSRF-TOKEN header and sets its cookie. Call again after login and logout.");
+
         return api;
     }
+
+    // The token is bound to the current user, so a token from before login is rejected after it.
+    private static Ok<CsrfTokenResponse> IssueCsrfToken(HttpContext context, IAntiforgery antiforgery) =>
+        TypedResults.Ok(new CsrfTokenResponse(antiforgery.GetAndStoreTokens(context).RequestToken!));
 
     private static async Task<Results<Created<CurrentUserResponse>, ProblemHttpResult>> RegisterAsync(
         RegisterRequest request,

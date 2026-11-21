@@ -21,6 +21,8 @@ builder.Services.AddInfrastructure(
 builder.Services.AddApplication();
 
 builder.Services.AddCityParkAuthentication(builder.Environment);
+builder.Services.AddCityParkCsrfProtection(builder.Environment);
+builder.Services.AddCityParkRateLimiting();
 
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
 {
@@ -44,6 +46,8 @@ app.UseStatusCodePages();
 
 app.UseAuthentication();
 app.UseAuthorization();
+// After routing (implicit at the start), so it sees each endpoint's policy.
+app.UseRateLimiter();
 
 // The document (/openapi/v1.json) is the public contract; the interactive UI is for developers only.
 app.MapOpenApi();

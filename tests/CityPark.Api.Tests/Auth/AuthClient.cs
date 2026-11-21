@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using CityPark.Api.Auth;
 
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Mvc.Testing.Handlers;
 using Microsoft.Net.Http.Headers;
 
 namespace CityPark.Api.Tests.Auth;
@@ -14,6 +15,9 @@ internal static class AuthClient
     public static readonly Uri Login = new("/api/v1/auth/login", UriKind.Relative);
     public static readonly Uri Logout = new("/api/v1/auth/logout", UriKind.Relative);
     public static readonly Uri Me = new("/api/v1/auth/me", UriKind.Relative);
+    public static readonly Uri Csrf = new("/api/v1/auth/csrf", UriKind.Relative);
+
+    private static readonly Uri BaseAddress = new("https://localhost");
 
     /// <summary>Strong enough for the password rules in AuthSetup.</summary>
     public const string Password = "Parking-Spot-42";
@@ -22,13 +26,17 @@ internal static class AuthClient
     public static string NewEmail() => $"user-{Guid.NewGuid():N}@example.test";
 
     // HTTPS base address: outside Development the cookie is Secure, and the client keeps it only for HTTPS.
-    public static HttpClient Create(WebApplicationFactory<Program> factory, bool handleCookies = true) =>
-        factory.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            BaseAddress = new Uri("https://localhost"),
-            AllowAutoRedirect = false,
-            HandleCookies = handleCookies,
-        });
+    // No redirect handler, so redirects are not followed. CsrfHandler is innermost: it sees the cookies.
+    // Each client has its own address, so it has its own rate-limit budget (TestClientAddress).
+    public static HttpClient Create(WebApplicationFactory<Program> factory, bool handleCookies = true)
+    {
+        var client = factory.CreateDefaultClient(BaseAddress, Handlers(handleCookies));
+        client.DefaultRequestHeaders.Add(TestClientAddress.HeaderName, TestClientAddress.New());
+        return client;
+    }
+
+    private static DelegatingHandler[] Handlers(bool handleCookies) =>
+        handleCookies ? [new CookieContainerHandler(), new CsrfHandler()] : [new CsrfHandler()];
 
     public static Task<HttpResponseMessage> RegisterAsync(HttpClient client, string email, string password) =>
         client.PostAsJsonAsync(Register, new { email, password }, TestContext.Current.CancellationToken);
