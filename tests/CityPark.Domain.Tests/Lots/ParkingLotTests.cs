@@ -81,6 +81,57 @@ public class ParkingLotTests
     }
 
     [Fact]
+    public void Create_WhenNameIsBlank_NamesTheField()
+    {
+        var error = Assert.Throws<DomainException>(() => ParkingLot.Create(" ", "Titova 1", TwoMarks, DayWindow));
+
+        Assert.Equal(nameof(ParkingLot.Name), error.Field);
+    }
+
+    [Fact]
+    public void Update_ReplacesEditableValuesAndKeepsIdAndSpaces()
+    {
+        var lot = NewLot();
+        var space = lot.AddSpace("A-1");
+        var id = lot.Id;
+        var newRate = new Rate(3.00m, "BAM");
+        var newHours = new OpeningHours(new TimeOnly(6, 0), new TimeOnly(23, 0));
+
+        lot.Update(" Centar 2 ", " Titova 2 ", newRate, newHours);
+
+        Assert.Equal(id, lot.Id);
+        Assert.Equal("Centar 2", lot.Name);
+        Assert.Equal("Titova 2", lot.Address);
+        Assert.Equal(newRate, lot.Rate);
+        Assert.Equal(newHours, lot.OpeningHours);
+        Assert.Same(space, Assert.Single(lot.Spaces));
+    }
+
+    [Fact]
+    public void Update_WhenAddressIsBlank_LeavesTheLotUnchanged()
+    {
+        var lot = NewLot();
+
+        var error = Assert.Throws<DomainException>(() => lot.Update("Novi", "  ", new Rate(3.00m, "BAM"), DayWindow));
+
+        Assert.Equal(nameof(ParkingLot.Address), error.Field);
+        Assert.Equal("Centar", lot.Name);
+        Assert.Equal(TwoMarks, lot.Rate);
+    }
+
+    [Fact]
+    public void Update_WhenRateIsNull_ThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => NewLot().Update("Centar", "Titova 1", null!, DayWindow));
+    }
+
+    [Fact]
+    public void Update_WhenOpeningHoursAreNull_ThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => NewLot().Update("Centar", "Titova 1", TwoMarks, null!));
+    }
+
+    [Fact]
     public void AddSpace_AddsActiveSpaceToTheLot()
     {
         var lot = NewLot();
@@ -112,23 +163,23 @@ public class ParkingLotTests
     }
 
     [Fact]
-    public void AddSpace_WhenLabelAlreadyExists_ThrowsDomainException()
+    public void AddSpace_WhenLabelAlreadyExists_ThrowsDomainConflictException()
     {
         var lot = NewLot();
         lot.AddSpace("A-1");
 
-        Assert.Throws<DomainException>(() => lot.AddSpace("A-1"));
+        Assert.Throws<DomainConflictException>(() => lot.AddSpace("A-1"));
     }
 
     [Theory]
     [InlineData("a-1")]
     [InlineData(" A-1 ")]
-    public void AddSpace_WhenLabelDiffersOnlyInCaseOrSpaces_ThrowsDomainException(string duplicate)
+    public void AddSpace_WhenLabelDiffersOnlyInCaseOrSpaces_ThrowsDomainConflictException(string duplicate)
     {
         var lot = NewLot();
         lot.AddSpace("A-1");
 
-        Assert.Throws<DomainException>(() => lot.AddSpace(duplicate));
+        Assert.Throws<DomainConflictException>(() => lot.AddSpace(duplicate));
         Assert.Single(lot.Spaces);
     }
 

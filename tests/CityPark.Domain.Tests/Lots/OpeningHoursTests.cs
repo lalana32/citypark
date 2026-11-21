@@ -43,6 +43,14 @@ public class OpeningHoursTests
     }
 
     [Fact]
+    public void Constructor_WhenWindowIsInvalid_NamesClosesAt()
+    {
+        var error = Assert.Throws<DomainException>(() => new OpeningHours(new TimeOnly(22, 0), new TimeOnly(7, 0)));
+
+        Assert.Equal(nameof(OpeningHours.ClosesAt), error.Field);
+    }
+
+    [Fact]
     public void Contains_WhenIntervalIsInsideWindow_ReturnsTrue()
     {
         Assert.True(DayWindow.Contains(Between(Winter(10), Winter(12)), Sarajevo));
