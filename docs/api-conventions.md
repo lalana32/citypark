@@ -82,11 +82,11 @@ Example of a 422:
   "type": "https://tools.ietf.org/html/rfc9110#section-15.5.21",
   "title": "A business rule was violated.",
   "status": 422,
-  "detail": "A customer can cancel a reservation only before it starts.",
+  "detail": "A customer can cancel a reservation only before it starts (R9).",
   "instance": "/api/v1/reservations/0192f3c4-.../cancel",
   "traceId": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00",
   "errors": {
-    "general": ["A customer can cancel a reservation only before it starts."]
+    "general": ["A customer can cancel a reservation only before it starts (R9)."]
   }
 }
 ```

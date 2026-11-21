@@ -188,7 +188,7 @@ public sealed class Reservation
 
         if (!mayCancel)
         {
-            throw new DomainException("A customer can cancel a reservation only before it starts.");
+            throw new DomainException("A customer can cancel a reservation only before it starts (R9).");
         }
 
         Status = ReservationStatus.Cancelled;
