@@ -4,6 +4,7 @@ using System.Threading.RateLimiting;
 using CityPark.Api.Errors;
 
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CityPark.Api.Auth;
 
