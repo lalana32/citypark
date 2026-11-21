@@ -47,9 +47,15 @@ public static class CsrfProtection
     private static async ValueTask<object?> ValidateAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
         var http = context.HttpContext;
-        var antiforgery = http.RequestServices.GetRequiredService<IAntiforgery>();
+        var method = http.Request.Method;
 
-        // Always true for GET, HEAD, OPTIONS and TRACE.
+        // Checked first: IsRequestValidAsync throws on plain HTTP when the cookie is Secure, even for GET.
+        if (HttpMethods.IsGet(method) || HttpMethods.IsHead(method) || HttpMethods.IsOptions(method) || HttpMethods.IsTrace(method))
+        {
+            return await next(context);
+        }
+
+        var antiforgery = http.RequestServices.GetRequiredService<IAntiforgery>();
         if (await antiforgery.IsRequestValidAsync(http))
         {
             return await next(context);
