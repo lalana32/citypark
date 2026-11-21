@@ -52,6 +52,30 @@ public class OpenApiDocumentTests(ApiFactory factory) : IClassFixture<ApiFactory
         Assert.True(problem.GetProperty("errors").TryGetProperty("start", out _));
     }
 
+    [Theory]
+    [InlineData("/api/v1/reservations", "post", new[] { "201", "400", "401", "404", "409", "422" })]
+    [InlineData("/api/v1/reservations", "get", new[] { "200", "400", "401" })]
+    [InlineData("/api/v1/reservations/{id}", "get", new[] { "200", "401", "404" })]
+    [InlineData("/api/v1/reservations/{id}/cancel", "post", new[] { "204", "401", "404", "409", "422" })]
+    public async Task ReservationEndpoints_DeclareEveryStatusCode(string path, string method, string[] statuses)
+    {
+        var operation = await GetOperationAsync(path, method);
+
+        var declared = operation.GetProperty("responses").EnumerateObject().Select(r => r.Name);
+        Assert.Subset(declared.ToHashSet(), statuses.ToHashSet());
+    }
+
+    [Fact]
+    public async Task CreateReservation_HasA201ExampleWithThePrice()
+    {
+        var post = await GetOperationAsync("/api/v1/reservations", "post");
+
+        var example = post.GetProperty("responses").GetProperty("201")
+            .GetProperty("content").GetProperty("application/json").GetProperty("example");
+        Assert.Equal(5.00m, example.GetProperty("price").GetDecimal());
+        Assert.Equal("Upcoming", example.GetProperty("state").GetString());
+    }
+
     [Fact]
     public async Task ScalarUi_IsNotServed_InProduction()
     {
@@ -63,13 +87,13 @@ public class OpenApiDocumentTests(ApiFactory factory) : IClassFixture<ApiFactory
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    private async Task<JsonElement> GetOperationAsync(string path)
+    private async Task<JsonElement> GetOperationAsync(string path, string method = "get")
     {
         var ct = TestContext.Current.CancellationToken;
         using var client = factory.CreateClient();
 
         var document = await client.GetFromJsonAsync<JsonElement>(new Uri("/openapi/v1.json", UriKind.Relative), ct);
 
-        return document.GetProperty("paths").GetProperty(path).GetProperty("get");
+        return document.GetProperty("paths").GetProperty(path).GetProperty(method);
     }
 }
