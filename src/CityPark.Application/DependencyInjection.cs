@@ -1,3 +1,4 @@
+using CityPark.Application.Admin;
 using CityPark.Application.Availability;
 using CityPark.Application.Lots;
 using CityPark.Application.Reservations;
@@ -25,6 +26,7 @@ public static class DependencyInjection
         services.AddScoped<CreateReservationService>();
         services.AddScoped<CancelReservationService>();
         services.AddScoped<OwnReservationQueryService>();
+        services.AddScoped<AdminLotService>();
 
         return services;
     }
