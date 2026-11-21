@@ -127,6 +127,10 @@ full exception is logged at Error level, and `traceId` links the response to tha
   opens it.
 - Every endpoint declares its responses (`Produces`, `ProducesProblem`) so the document is
   complete. The `/api/v1` group already declares the 500 ProblemDetails response.
+- Examples are added with `.WithResponseExample(status, value)` and `.WithParameterExample(name, value)`
+  (`CityPark.Api.OpenApi`). The value is a real response object serialized with the API's JSON
+  options, so an example cannot drift from the type. An example for an undeclared response or
+  parameter throws when the document is generated, and the OpenAPI tests catch it.
 - `Microsoft.OpenApi` is pinned to 2.13.1 in `CityPark.Api.csproj`, because the 2.0.0 that
   `Microsoft.AspNetCore.OpenApi` 10.0.4 brings in has a known vulnerability
   (GHSA-v5pm-xwqc-g5wc). It stays on 2.x, the line `Microsoft.AspNetCore.OpenApi` 10 is built on.
