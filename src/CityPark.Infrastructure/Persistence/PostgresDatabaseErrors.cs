@@ -11,6 +11,9 @@ public sealed class PostgresDatabaseErrors : IDatabaseErrors
     // Also spelled out in its migration on purpose: a migration must never change after it is applied.
     public const string SpaceOverlapConstraint = "ex_reservations_space_no_overlap";
 
+    // Named by the snake_case convention in InitialCreate, not in ParkingSpaceConfiguration.
+    public const string SpaceLabelIndex = "ix_parking_spaces_lot_id_label";
+
     public bool IsSpaceOverlapViolation(DbUpdateException exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
@@ -20,6 +23,17 @@ public sealed class PostgresDatabaseErrors : IDatabaseErrors
         {
             SqlState: PostgresErrorCodes.ExclusionViolation,
             ConstraintName: SpaceOverlapConstraint,
+        };
+    }
+
+    public bool IsSpaceLabelViolation(DbUpdateException exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        return exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: SpaceLabelIndex,
         };
     }
 }

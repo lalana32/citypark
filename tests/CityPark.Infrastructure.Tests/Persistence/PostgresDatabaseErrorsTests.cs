@@ -66,6 +66,52 @@ public sealed class PostgresDatabaseErrorsTests(PostgresFixture fixture) : IClas
         Assert.False(_errors.IsSpaceOverlapViolation(new DbUpdateException("save failed")));
     }
 
+    [Fact]
+    public async Task SameLabelAddedByTwoContexts_IsASpaceLabelViolation()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (lot, _) = await AddSpaceAsync(ct);
+
+        // Both load the lot before either saves, as two parallel requests would: the domain check passes in both.
+        await using var first = fixture.CreateDbContext();
+        await using var second = fixture.CreateDbContext();
+        var firstLot = await first.ParkingLots.Include(l => l.Spaces).SingleAsync(l => l.Id == lot.Id, ct);
+        var secondLot = await second.ParkingLots.Include(l => l.Spaces).SingleAsync(l => l.Id == lot.Id, ct);
+        firstLot.AddSpace("B-1");
+        secondLot.AddSpace("B-1");
+        await first.SaveChangesAsync(ct);
+
+        var ex = await Assert.ThrowsAsync<DbUpdateException>(() => second.SaveChangesAsync(ct));
+
+        Assert.True(_errors.IsSpaceLabelViolation(ex));
+        Assert.False(_errors.IsSpaceOverlapViolation(ex));
+    }
+
+    [Fact]
+    public async Task OverlappingActiveReservation_IsNotASpaceLabelViolation()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (lot, space) = await AddSpaceAsync(ct);
+        await AddReservationAsync(lot, space, fixture.UserId, ct);
+
+        var ex = await Assert.ThrowsAsync<DbUpdateException>(() => AddReservationAsync(lot, space, fixture.UserId, ct));
+
+        Assert.False(_errors.IsSpaceLabelViolation(ex));
+    }
+
+    [Fact]
+    public void UniqueViolation_OnAnotherIndex_IsNotASpaceLabelViolation()
+    {
+        var pg = new PostgresException(
+            "duplicate key value violates unique constraint",
+            "ERROR",
+            "ERROR",
+            PostgresErrorCodes.UniqueViolation,
+            constraintName: "ix_users_normalized_email");
+
+        Assert.False(_errors.IsSpaceLabelViolation(new DbUpdateException("save failed", pg)));
+    }
+
     private async Task<(ParkingLot Lot, ParkingSpace Space)> AddSpaceAsync(CancellationToken ct)
     {
         var lot = ParkingLot.Create(
