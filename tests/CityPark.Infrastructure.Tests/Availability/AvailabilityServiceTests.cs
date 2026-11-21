@@ -36,6 +36,20 @@ public sealed class AvailabilityServiceTests(PostgresFixture fixture) : IClassFi
     }
 
     [Fact]
+    public async Task IntervalWithLocalOffset_IsTheSameInstantAsUtc()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var lot = await AddLotAsync(ct);
+        await AddReservationAsync(lot, "A-1", Local(10), Local(11), ReservationStatus.Active, ct);
+
+        var winter = TimeSpan.FromHours(1);
+        var result = await QueryAsync(
+            lot.Id, new DateTimeOffset(2026, 12, 1, 10, 30, 0, winter), new DateTimeOffset(2026, 12, 1, 11, 30, 0, winter), ct);
+
+        Assert.Equal(["A-2", "A-3"], result.FreeSpaces.Select(s => s.Label));
+    }
+
+    [Fact]
     public async Task ActiveReservation_TouchingInterval_LeavesAllSpacesFree()
     {
         var ct = TestContext.Current.CancellationToken;

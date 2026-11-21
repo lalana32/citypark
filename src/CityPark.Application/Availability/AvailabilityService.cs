@@ -14,7 +14,8 @@ public sealed class AvailabilityService(IAppDbContext db, TimeProvider clock, Ti
         DateTimeOffset end,
         CancellationToken cancellationToken = default)
     {
-        var interval = new TimeInterval(start, end);
+        // The client may send any offset (Z or +01:00); the domain works in UTC (ADR-004).
+        var interval = new TimeInterval(start.ToUniversalTime(), end.ToUniversalTime());
 
         // The lot without its spaces: only the opening hours are needed to validate the interval.
         var lot = await db.ParkingLots
