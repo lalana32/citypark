@@ -4,6 +4,7 @@ using CityPark.Api.Auth;
 using CityPark.Api.Validation;
 using CityPark.Application.Common;
 using CityPark.Application.Reservations;
+using CityPark.Domain.Reservations;
 
 using Microsoft.AspNetCore.Http.HttpResults;
 
@@ -39,6 +40,12 @@ public static class ReservationEndpoints
         reservations.MapGet("/{id:guid}", GetAsync)
             .WithSummary("One of the signed-in customer's reservations. Another user's reservation is not found.")
             .ProducesProblem(StatusCodes.Status404NotFound);
+
+        reservations.MapPost("/{id:guid}/cancel", CancelAsync)
+            .WithSummary("Cancels one of the signed-in customer's reservations, at any time before it starts (R9).")
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
 
         return api;
     }
@@ -83,4 +90,16 @@ public static class ReservationEndpoints
         OwnReservationQueryService own,
         CancellationToken ct) =>
         TypedResults.Ok(ReservationResponse.From(await own.GetAsync(id, principal.UserId(), ct)));
+
+    private static async Task<NoContent> CancelAsync(
+        Guid id,
+        ClaimsPrincipal principal,
+        CancelReservationService cancel,
+        CancellationToken ct)
+    {
+        // Always as a customer, also for an admin: this route acts only on the caller's own reservations.
+        await cancel.CancelAsync(id, new Actor(principal.UserId(), CancellationActor.Customer), ct);
+
+        return TypedResults.NoContent();
+    }
 }
