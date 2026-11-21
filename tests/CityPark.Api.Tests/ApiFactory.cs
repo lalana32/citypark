@@ -28,6 +28,7 @@ public class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Admin:Email", string.Empty);
         builder.UseSetting("Admin:Password", string.Empty);
         builder.ConfigureServices(services => services
+            .AddSingleton<IStartupFilter, TestClientAddress>()
             .AddSingleton<IStartupFilter, ThrowingEndpoints>()
             .AddSingleton<IStartupFilter, ValidationEndpoints>()
             .AddSingleton<IStartupFilter, AuthEndpoints>());

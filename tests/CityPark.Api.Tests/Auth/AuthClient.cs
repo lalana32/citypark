@@ -27,8 +27,13 @@ internal static class AuthClient
 
     // HTTPS base address: outside Development the cookie is Secure, and the client keeps it only for HTTPS.
     // No redirect handler, so redirects are not followed. CsrfHandler is innermost: it sees the cookies.
-    public static HttpClient Create(WebApplicationFactory<Program> factory, bool handleCookies = true) =>
-        factory.CreateDefaultClient(BaseAddress, Handlers(handleCookies));
+    // Each client has its own address, so it has its own rate-limit budget (TestClientAddress).
+    public static HttpClient Create(WebApplicationFactory<Program> factory, bool handleCookies = true)
+    {
+        var client = factory.CreateDefaultClient(BaseAddress, Handlers(handleCookies));
+        client.DefaultRequestHeaders.Add(TestClientAddress.HeaderName, TestClientAddress.New());
+        return client;
+    }
 
     private static DelegatingHandler[] Handlers(bool handleCookies) =>
         handleCookies ? [new CookieContainerHandler(), new CsrfHandler()] : [new CsrfHandler()];
