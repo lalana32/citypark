@@ -2,6 +2,7 @@ using System.Security.Claims;
 
 using CityPark.Api.Auth;
 using CityPark.Api.Validation;
+using CityPark.Application.Common;
 using CityPark.Application.Reservations;
 
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -11,6 +12,8 @@ namespace CityPark.Api.Reservations;
 public static class ReservationEndpoints
 {
     public const string Route = ApiRoutes.V1 + "/reservations";
+
+    public const int DefaultPageSize = 20;
 
     public static RouteGroupBuilder MapReservationEndpoints(this RouteGroupBuilder api)
     {
@@ -28,6 +31,14 @@ public static class ReservationEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity);
+
+        reservations.MapGet(string.Empty, ListAsync)
+            .WithSummary("The signed-in customer's reservations, newest start first, one page at a time.")
+            .ProducesValidationProblem();
+
+        reservations.MapGet("/{id:guid}", GetAsync)
+            .WithSummary("One of the signed-in customer's reservations. Another user's reservation is not found.")
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         return api;
     }
@@ -52,4 +63,24 @@ public static class ReservationEndpoints
 
         return TypedResults.Created(Location(reservation.Id), ReservationResponse.From(created));
     }
+
+    private static async Task<Ok<PagedResult<ReservationResponse>>> ListAsync(
+        ClaimsPrincipal principal,
+        OwnReservationQueryService own,
+        int page = 1,
+        int pageSize = DefaultPageSize,
+        CancellationToken ct = default)
+    {
+        var result = await own.ListAsync(principal.UserId(), new PageRequest(page, pageSize), ct);
+
+        return TypedResults.Ok(new PagedResult<ReservationResponse>(
+            [.. result.Items.Select(ReservationResponse.From)], result.Page, result.PageSize, result.TotalCount));
+    }
+
+    private static async Task<Ok<ReservationResponse>> GetAsync(
+        Guid id,
+        ClaimsPrincipal principal,
+        OwnReservationQueryService own,
+        CancellationToken ct) =>
+        TypedResults.Ok(ReservationResponse.From(await own.GetAsync(id, principal.UserId(), ct)));
 }
