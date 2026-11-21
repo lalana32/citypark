@@ -1,7 +1,8 @@
 # Authentication
 
 Sign-in, the session cookie, roles and the administrator account. The decision behind it is
-[ADR-003](adr/0003-cookie-authentication-with-identity.md). Added in CP-022.
+[ADR-003](adr/0003-cookie-authentication-with-identity.md). Added in CP-022; CSRF protection, rate
+limiting and the CORS stance ([Security](#security)) in CP-025.
 
 ## Endpoints
 
@@ -14,6 +15,10 @@ All under `/api/v1/auth`. Request bodies are JSON and go through the request val
 | `POST /login` `{ email, password }` | no | **200** with the user, sets the session cookie | **401** |
 | `POST /logout` | yes | **204**, deletes the cookie and invalidates every copy of it | 401 |
 | `GET /me` | yes | **200** with the user | 401 |
+| `GET /csrf` | no | **200** `{ "token": "..." }`, sets the antiforgery cookie | |
+
+Every `POST` above also needs the `X-XSRF-TOKEN` header (400 without it), and `register` and
+`login` answer **429** past the rate limit. Both are described under [Security](#security).
 
 The user in a response:
 
@@ -76,7 +81,77 @@ A locked account gets the same 401 as a wrong password. The failure counter rese
 successful login.
 
 Known limit: Identity computes no password hash for an unknown email, so that answer is slightly
-faster. Rate limiting (next card) makes measuring this impractical.
+faster. The [rate limit](#rate-limiting) makes measuring this impractical.
+
+## Security
+
+### CSRF protection
+
+The session is a cookie, which the browser attaches to every request to the API, including one
+started by another site. Two layers stop such a forged request:
+
+1. `SameSite=Strict` on the session cookie ([Session cookie](#session-cookie)).
+2. An antiforgery token in a custom header, for browsers or cases where SameSite does not hold.
+
+The contract:
+
+| Rule | Value |
+| --- | --- |
+| Get a token | `GET /api/v1/auth/csrf` returns `{ "token": "..." }` and sets the `citypark.csrf` cookie (`HttpOnly`, `SameSite=Strict`, `Secure` outside `Development`) |
+| Send it | In the `X-XSRF-TOKEN` header on every `POST`, `PUT`, `PATCH` and `DELETE` under `/api/v1`, together with the cookie |
+| Missing or invalid | **400** ProblemDetails, `type` `https://tools.ietf.org/html/rfc9110#section-15.5.1`, the message under `errors.general`. The handler does not run, so nothing is created or changed |
+| Safe methods | `GET`, `HEAD`, `OPTIONS` and `TRACE` need no token |
+| After login and logout | Get a new token. A token is bound to the user it was issued for, so a token from before login is rejected after it |
+
+- `login` and `register` need the token too. Otherwise another site could sign the browser in to
+  the attacker's account (login CSRF).
+- **Why 400 and not 403:** 403 already means "signed in, but without the required role". A
+  request without the token is malformed, and 400 is also what MVC's antiforgery check returns.
+- **Why an endpoint filter:** the built-in antiforgery middleware only marks a request as invalid
+  and rejects it when a form is bound. The API reads JSON, so `CsrfProtection` calls
+  `IAntiforgery.IsRequestValidAsync` itself. The filter is on the `/api/v1` group, so every
+  business endpoint gets it without opting in.
+- It runs after authentication and authorization: a request without a cookie still gets 401.
+
+In the SPA:
+
+```ts
+const { token } = await fetch("/api/v1/auth/csrf").then(r => r.json());
+await fetch("/api/v1/reservations", {
+  method: "POST",
+  headers: { "Content-Type": "application/json", "X-XSRF-TOKEN": token },
+  body: JSON.stringify(reservation),
+});
+```
+
+### Rate limiting
+
+A fixed-window limiter (`AuthRateLimiting`) guards the credential endpoints against brute force
+and credential stuffing. Lockout protects one account; the limit protects against one client
+trying many accounts.
+
+| Rule | Value |
+| --- | --- |
+| Endpoints | `POST /auth/login` and `POST /auth/register`, sharing **one** budget |
+| Limit | **10** requests per **1-minute** fixed window, no queue |
+| Partition | The client IP address (`HttpContext.Connection.RemoteIpAddress`) |
+| Past the limit | **429** ProblemDetails, `type` `https://tools.ietf.org/html/rfc6585#section-4`, with `Retry-After` in seconds |
+| Other endpoints | Not limited, for example `GET /api/v1/lots` |
+
+- Every request counts, also a successful or malformed one.
+- A fixed window allows a burst at the edge: up to 20 requests within a few seconds across two
+  windows. That is acceptable for these endpoints; a sliding window would smooth it.
+- **Known limit:** behind a reverse proxy the remote address is the proxy's, and all clients
+  would share one budget. Such a deployment must configure `ForwardedHeaders` with the proxy as
+  a known proxy. `X-Forwarded-For` must never be trusted without that, because any client can
+  send it. A WAF or gateway is out of scope.
+
+### CORS
+
+The SPA and the API are served from the same origin, so CORS is **not** enabled. The API returns
+no `Access-Control-Allow-Origin` header, also not to a preflight. A page on another site can
+therefore neither read API responses nor send the `X-XSRF-TOKEN` header, which a browser allows
+on a cross-origin request only after a successful preflight.
 
 ## Administrator seeding
 
@@ -115,6 +190,17 @@ dotnet run --project src/CityPark.Api
 - `CookieAuthenticationTests`: 401 and 403 instead of redirects, and the cookie flags.
 - `AdminSeedingTests`: seeding with and without the variables, a second start, a weak password,
   and that the password is never logged.
+- `CsrfProtectionTests`: the token endpoint and its cookie, a reservation without the header (400,
+  nothing created) and with it (201), a token from before login, and login without the header.
+- `RateLimitingTests`: the 11th login and register attempt (429 with `Retry-After`), a second
+  client that is not limited, and `GET /api/v1/lots` after the budget is used up.
+- `CorsTests`: no `Access-Control-Allow-Origin` on a request or a preflight from another origin.
 
 `AuthClient` creates cookie-aware clients with an `https://localhost` base address, because the
-client only keeps a `Secure` cookie for HTTPS requests.
+client only keeps a `Secure` cookie for HTTPS requests. It also:
+
+- adds `CsrfHandler`, which does what the SPA does: it fetches a token before every unsafe
+  request and sends the header. A request with the `CsrfHandler.Skip` option is sent as built.
+- gives each client its own address in the `X-Test-Client-Address` header. TestServer has no
+  remote address, so without this all tests would share one rate-limit budget. Only the
+  test-only `TestClientAddress` middleware reads the header; the API never trusts it.
