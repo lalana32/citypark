@@ -81,6 +81,65 @@ public class ReservationEndpointsTests(ClockedApiFactory factory) : IClassFixtur
     }
 
     [Fact]
+    public async Task Create_ByLot_Returns201WithFirstFreeSpace()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var lot = await TestLots.AddAsync(factory, TestLots.UniqueName("Centar"), spaces: 2, inactiveSpaces: 0, ct);
+        using var client = await SignedInClientAsync();
+        await CreateAsync(client, lot.Spaces.Single(s => s.Label == "A-01").Id, "A12K345", ct);
+
+        using var response = await client.PostAsJsonAsync(
+            Reservations, new { lotId = lot.Id, start = Start, end = End, plate = "E12K345" }, ct);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
+        Assert.Equal($"/api/v1/reservations/{body.GetProperty("id").GetGuid()}", response.Headers.Location?.OriginalString);
+        Assert.Equal("A-02", body.GetProperty("spaceLabel").GetString());
+        Assert.Equal(5.00m, body.GetProperty("price").GetDecimal());
+    }
+
+    [Fact]
+    public async Task Create_ByLot_FullyBooked_Returns409Problem()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var lot = await TestLots.AddAsync(factory, TestLots.UniqueName("Centar"), spaces: 1, inactiveSpaces: 0, ct);
+        using var client = await SignedInClientAsync();
+        await CreateAsync(client, lot.Spaces.Single().Id, "A12K345", ct);
+
+        using var response = await client.PostAsJsonAsync(
+            Reservations, new { lotId = lot.Id, start = Start, end = End, plate = "E12K345" }, ct);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    public async Task Create_BothOrNeitherOfSpaceAndLot_Returns400(bool withSpace, bool withLot)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var client = await SignedInClientAsync();
+
+        // No lot needed: the shape is checked before the handler reads the database.
+        using var response = await client.PostAsJsonAsync(
+            Reservations,
+            new
+            {
+                spaceId = withSpace ? Guid.CreateVersion7() : (Guid?)null,
+                lotId = withLot ? Guid.CreateVersion7() : (Guid?)null,
+                start = Start,
+                end = End,
+                plate = "A12K345",
+            },
+            ct);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var errors = (await response.Content.ReadFromJsonAsync<JsonElement>(ct)).GetProperty("errors");
+        Assert.Equal(new[] { "lotId", "spaceId" }, errors.EnumerateObject().Select(e => e.Name).Order());
+    }
+
+    [Fact]
     public async Task Get_OwnReservation_Returns200()
     {
         var ct = TestContext.Current.CancellationToken;
