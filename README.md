@@ -9,6 +9,7 @@ Architecture decisions are recorded in the [ADR index](docs/adr/README.md).
 The contract of the use cases, including pagination, is in [docs/api.md](docs/api.md).
 Routes, the error contract, health checks and OpenAPI are described in [docs/api-conventions.md](docs/api-conventions.md).
 Sign-in, the session cookie, roles and the admin account are in [docs/auth.md](docs/auth.md).
+Query plans for availability and the overlap check are in [docs/performance.md](docs/performance.md).
 
 ## Solution layout
 
