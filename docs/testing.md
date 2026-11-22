@@ -30,6 +30,11 @@ All intervals are on Tuesday 1 December 2026, Sarajevo time.
 | B | 20 | one | staggered by 15 minutes: `[10:00, 11:00)`, `[10:15, 11:15)`, … | no two Active rows overlap; Active rows = successes |
 | C | 20 | five, round-robin | all `[10:00, 11:00)` | exactly 5 succeed (one per space), 15 conflict |
 | D | 10 | one | adjacent 30 minutes: `[10:00, 10:30)`, `[10:30, 11:00)`, … | all 10 succeed |
+| E | 20 | by lot (five spaces), the system picks | all `[10:00, 11:00)` | exactly 5 succeed (one per space), 15 get `NoFreeSpaceException` |
+
+Scenario E (CP-030) proves the retry with the next candidate: all 20 requests see the same five
+free spaces and race for the first one. Without the retry only one request per round would
+succeed.
 
 In scenario B the number of successes depends on which request wins each race, so only the
 invariant is checked: no overlapping Active rows remain.
