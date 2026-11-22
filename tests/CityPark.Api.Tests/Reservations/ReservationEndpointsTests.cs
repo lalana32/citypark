@@ -19,6 +19,8 @@ public class ReservationEndpointsTests(ClockedApiFactory factory) : IClassFixtur
 {
     private static readonly Uri Reservations = new("/api/v1/reservations", UriKind.Relative);
 
+    private static readonly string[] SpaceAndLotKeys = ["lotId", "spaceId"];
+
     // 10:00–11:30 local: 90 minutes, billed as 2 hours (R8).
     private const string Start = "2026-12-01T09:00:00Z";
     private const string End = "2026-12-01T10:30:00Z";
@@ -136,7 +138,7 @@ public class ReservationEndpointsTests(ClockedApiFactory factory) : IClassFixtur
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var errors = (await response.Content.ReadFromJsonAsync<JsonElement>(ct)).GetProperty("errors");
-        Assert.Equal(new[] { "lotId", "spaceId" }, errors.EnumerateObject().Select(e => e.Name).Order());
+        Assert.Equal(SpaceAndLotKeys, errors.EnumerateObject().Select(e => e.Name).Order());
     }
 
     [Fact]
