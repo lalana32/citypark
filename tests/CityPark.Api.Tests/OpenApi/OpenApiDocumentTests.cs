@@ -70,6 +70,8 @@ public class OpenApiDocumentTests(ApiFactory factory) : IClassFixture<ApiFactory
     [InlineData("/api/v1/admin/lots/{id}", "put", new[] { "200", "400", "401", "403", "404", "422" })]
     [InlineData("/api/v1/admin/lots/{id}/spaces", "post", new[] { "201", "400", "401", "403", "404", "409", "422" })]
     [InlineData("/api/v1/admin/lots/{lotId}/spaces/{spaceId}/deactivate", "post", new[] { "204", "401", "403", "404", "409" })]
+    [InlineData("/api/v1/admin/reservations", "get", new[] { "200", "400", "401", "403" })]
+    [InlineData("/api/v1/admin/reservations/{id}/cancel", "post", new[] { "200", "401", "403", "404", "409" })]
     public async Task AdminEndpoints_AreTaggedAdminAndDeclareEveryStatusCode(string path, string method, string[] statuses)
     {
         var operation = await GetOperationAsync(path, method);

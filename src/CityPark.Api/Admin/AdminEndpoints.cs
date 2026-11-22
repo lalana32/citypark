@@ -1,9 +1,15 @@
+using System.Security.Claims;
+
 using CityPark.Api.Auth;
 using CityPark.Api.Lots;
 using CityPark.Api.OpenApi;
+using CityPark.Api.Reservations;
 using CityPark.Api.Validation;
 using CityPark.Application.Admin;
+using CityPark.Application.Common;
 using CityPark.Application.Lots;
+using CityPark.Application.Reservations;
+using CityPark.Domain.Reservations;
 
 using Microsoft.AspNetCore.Http.HttpResults;
 
@@ -52,6 +58,20 @@ public static class AdminEndpoints
             .ProducesProblem(StatusCodes.Status409Conflict)
             .WithResponseExample(StatusCodes.Status409Conflict, AdminExamples.SpaceHasReservations, "application/problem+json");
 
+        admin.MapGet("/reservations", ListReservationsAsync)
+            .WithSummary("Reservations of every user, newest start first, one page at a time. Every filter is optional.")
+            .WithDescription(
+                "from and to are Europe/Sarajevo dates (yyyy-MM-dd), both inclusive, matched against the day a reservation starts. " +
+                "status is the stored status, Active or Cancelled.")
+            .ProducesValidationProblem()
+            .WithResponseExample(StatusCodes.Status200OK, AdminExamples.ReservationPage);
+
+        admin.MapPost("/reservations/{id:guid}/cancel", CancelReservationAsync)
+            .WithSummary("Cancels any user's reservation at any time, also after it has started (R9).")
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .WithResponseExample(StatusCodes.Status200OK, AdminExamples.CancelledReservation);
+
         return api;
     }
 
@@ -96,5 +116,35 @@ public static class AdminEndpoints
         await admin.DeactivateSpaceAsync(lotId, spaceId, ct);
 
         return TypedResults.NoContent();
+    }
+
+    private static async Task<Ok<PagedResult<AdminReservationResponse>>> ListReservationsAsync(
+        AdminReservationQueryService reservations,
+        Guid? lotId = null,
+        DateOnly? from = null,
+        DateOnly? to = null,
+        ReservationStatus? status = null,
+        int page = 1,
+        int pageSize = ReservationEndpoints.DefaultPageSize,
+        CancellationToken ct = default)
+    {
+        var result = await reservations.ListAsync(
+            new AdminReservationFilter(lotId, from, to, status), new PageRequest(page, pageSize), ct);
+
+        return TypedResults.Ok(new PagedResult<AdminReservationResponse>(
+            [.. result.Items.Select(AdminReservationResponse.From)], result.Page, result.PageSize, result.TotalCount));
+    }
+
+    // 200 with the body instead of 204: the admin sees whose reservation was cancelled.
+    private static async Task<Ok<AdminReservationResponse>> CancelReservationAsync(
+        Guid id,
+        ClaimsPrincipal principal,
+        CancelReservationService cancel,
+        AdminReservationQueryService reservations,
+        CancellationToken ct)
+    {
+        await cancel.CancelAsync(id, new Actor(principal.UserId(), CancellationActor.Administrator), ct);
+
+        return TypedResults.Ok(AdminReservationResponse.From(await reservations.GetAsync(id, ct)));
     }
 }

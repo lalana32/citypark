@@ -26,6 +26,8 @@ public class AuthorizationMatrixTests(ClockedApiFactory factory) : IClassFixture
         { "PUT", $"/api/v1/admin/lots/{AnyId}" },
         { "POST", $"/api/v1/admin/lots/{AnyId}/spaces" },
         { "POST", $"/api/v1/admin/lots/{AnyId}/spaces/{AnyId}/deactivate" },
+        { "GET", "/api/v1/admin/reservations" },
+        { "POST", $"/api/v1/admin/reservations/{AnyId}/cancel" },
     };
 
     public static TheoryData<string, string> AdminEndpoints => new()
@@ -35,6 +37,8 @@ public class AuthorizationMatrixTests(ClockedApiFactory factory) : IClassFixture
         { "PUT", $"/api/v1/admin/lots/{AnyId}" },
         { "POST", $"/api/v1/admin/lots/{AnyId}/spaces" },
         { "POST", $"/api/v1/admin/lots/{AnyId}/spaces/{AnyId}/deactivate" },
+        { "GET", "/api/v1/admin/reservations" },
+        { "POST", $"/api/v1/admin/reservations/{AnyId}/cancel" },
     };
 
     public static TheoryData<string, HttpStatusCode> PublicEndpoints => new()
