@@ -29,7 +29,7 @@ public static class ReservationEndpoints
 
         reservations.MapPost(string.Empty, CreateAsync)
             .WithValidation<CreateReservationRequest>()
-            .WithSummary("Reserves a space for the signed-in customer; the price is fixed now (R8).")
+            .WithSummary("Reserves the given space, or the first free space of the given lot, for the signed-in customer; the price is fixed now (R8).")
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)
@@ -67,9 +67,10 @@ public static class ReservationEndpoints
     {
         var userId = principal.UserId();
 
-        // ValidationFilter has already rejected missing fields.
-        var reservation = await create.CreateAsync(
-            userId, request.SpaceId!.Value, request.Start!.Value, request.End!.Value, request.Plate!, ct);
+        // ValidationFilter has already rejected missing fields and both or neither of SpaceId and LotId.
+        var reservation = request.LotId is { } lotId
+            ? await create.CreateInLotAsync(userId, lotId, request.Start!.Value, request.End!.Value, request.Plate!, ct)
+            : await create.CreateAsync(userId, request.SpaceId!.Value, request.Start!.Value, request.End!.Value, request.Plate!, ct);
 
         // Read back through the query, so the 201 body is exactly what GET on the Location returns.
         var created = await own.GetAsync(reservation.Id, userId, ct);
