@@ -124,14 +124,47 @@ public sealed class ParallelReservationTests : IClassFixture<PostgresFixture>, I
         }
     }
 
+    [Fact]
+    public async Task ScenarioE_SameInterval_ByLot_WithFiveSpaces_ExactlyFiveSucceed()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        for (var round = 1; round <= Rounds; round++)
+        {
+            var lot = await AddLotEntityAsync(5, ct);
+
+            // Every request sees the same five candidates, so most lose the first insert and must retry.
+            var results = await ParallelRunner.RunAsync(20, _ => CreateInLotAsync(lot.Id, Local(10), Local(11), ct));
+
+            var successes = CountSuccesses<NoFreeSpaceException>(round, results);
+            Assert.True(successes == 5, $"Round {round}: {successes} of 20 succeeded, expected 5.");
+
+            foreach (var space in lot.Spaces)
+            {
+                Assert.True(await CountActiveAsync(space.Id, ct) == 1, $"Round {round}: space {space.Label} must have 1 active row.");
+            }
+        }
+    }
+
     public ValueTask DisposeAsync() => _services.DisposeAsync();
 
-    // Any failure other than a conflict fails the test straight away.
-    private static int CountSuccesses(int round, IReadOnlyList<Exception?> results)
+    private static int CountSuccesses(int round, IReadOnlyList<Exception?> results) =>
+        CountSuccesses<ReservationConflictException>(round, results);
+
+    // Any failure other than the expected conflict fails the test straight away.
+    private static int CountSuccesses<TConflict>(int round, IReadOnlyList<Exception?> results)
+        where TConflict : Exception
     {
-        var unexpected = results.FirstOrDefault(r => r is not null and not ReservationConflictException);
+        var unexpected = results.FirstOrDefault(r => r is not null and not TConflict);
         Assert.True(unexpected is null, $"Round {round}: unexpected failure {unexpected}");
         return results.Count(r => r is null);
+    }
+
+    private async Task CreateInLotAsync(Guid lotId, DateTimeOffset start, DateTimeOffset end, CancellationToken ct)
+    {
+        await using var scope = _services.CreateAsyncScope();
+        var service = scope.ServiceProvider.GetRequiredService<CreateReservationService>();
+        await service.CreateInLotAsync(_fixture.UserId, lotId, start, end, Plate, ct);
     }
 
     private async Task CreateAsync(Guid spaceId, DateTimeOffset start, DateTimeOffset end, CancellationToken ct)
@@ -157,16 +190,22 @@ public sealed class ParallelReservationTests : IClassFixture<PostgresFixture>, I
         return [.. rows.Select(r => r.Interval)];
     }
 
-    private async Task<IReadOnlyList<Guid>> AddLotAsync(int spaceCount, CancellationToken ct)
+    private async Task<IReadOnlyList<Guid>> AddLotAsync(int spaceCount, CancellationToken ct) =>
+        [.. (await AddLotEntityAsync(spaceCount, ct)).Spaces.Select(s => s.Id)];
+
+    private async Task<ParkingLot> AddLotEntityAsync(int spaceCount, CancellationToken ct)
     {
         var lot = ParkingLot.Create(
             "Test lot", "Test street 1", new Rate(2.00m, "BAM"), new OpeningHours(new TimeOnly(7, 0), new TimeOnly(22, 0)));
 
-        var spaces = Enumerable.Range(1, spaceCount).Select(n => lot.AddSpace($"A-{n}").Id).ToList();
+        for (var n = 1; n <= spaceCount; n++)
+        {
+            lot.AddSpace($"A-{n}");
+        }
 
         await using var db = _fixture.CreateDbContext();
         db.ParkingLots.Add(lot);
         await db.SaveChangesAsync(ct);
-        return spaces;
+        return lot;
     }
 }
