@@ -106,7 +106,8 @@ Notes:
 - The reservation routes act only on the caller's own reservations, also for an admin. Viewing
   and cancelling any reservation goes through the admin reservation routes (CP-028).
 - `AdminReservationEndpointsTests` moves the fake clock (to one minute before a start, or into a
-  reservation), so it has a class and a factory of its own and restores the clock in `finally`.
+  reservation), so it has a class and a factory of its own. `FakeTimeProvider` cannot go back in
+  time, so each test first moves the clock forward to a day of its own and books on that day.
 - The admin routes (CP-027) get `{}` as the body, which most of them reject with 400. A 403
   proves that authorization runs before validation. The Admin column is in
   `tests/CityPark.Api.Tests/Admin/AdminEndpointsTests.cs`, which checks each acceptance criterion
