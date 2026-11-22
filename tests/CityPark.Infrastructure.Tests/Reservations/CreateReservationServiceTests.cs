@@ -168,6 +168,94 @@ public sealed class CreateReservationServiceTests(PostgresFixture fixture) : ICl
         await Assert.ThrowsAsync<NotFoundException>(() => CreateAsync(Guid.CreateVersion7(), Local(10), Local(11), ct));
     }
 
+    [Fact]
+    public async Task InLot_PicksFirstFreeSpaceByLabel()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var lot = await AddLotAsync(ct);
+        await CreateAsync(Space(lot, "A-1").Id, Local(10), Local(11), ct);
+
+        var created = await CreateInLotAsync(lot.Id, Local(10), Local(11, 30), ct);
+
+        Assert.Equal(Space(lot, "A-2").Id, created.SpaceId);
+        Assert.Equal(4.00m, created.Price);
+        Assert.Equal(2, await CountInLotAsync(lot, ct));
+    }
+
+    [Fact]
+    public async Task InLot_TouchingInterval_TakesFirstSpace()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var lot = await AddLotAsync(ct);
+        await CreateAsync(Space(lot, "A-1").Id, Local(10), Local(11), ct);
+
+        var created = await CreateInLotAsync(lot.Id, Local(11), Local(12), ct);
+
+        Assert.Equal(Space(lot, "A-1").Id, created.SpaceId);
+    }
+
+    [Fact]
+    public async Task InLot_SkipsInactiveSpace()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var lot = await AddLotAsync(ct, inactiveLabel: "A-1");
+
+        var created = await CreateInLotAsync(lot.Id, Local(10), Local(11), ct);
+
+        Assert.Equal(Space(lot, "A-2").Id, created.SpaceId);
+    }
+
+    [Fact]
+    public async Task InLot_FullyBooked_ThrowsNoFreeSpaceAndWritesNothing()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var lot = await AddLotAsync(ct);
+
+        foreach (var space in lot.Spaces)
+        {
+            await CreateAsync(space.Id, Local(10), Local(11), ct);
+        }
+
+        var ex = await Assert.ThrowsAsync<NoFreeSpaceException>(() => CreateInLotAsync(lot.Id, Local(10, 30), Local(11, 30), ct));
+
+        Assert.Equal(lot.Id, ex.LotId);
+        Assert.Equal(3, await CountInLotAsync(lot, ct));
+    }
+
+    [Fact]
+    public async Task InLot_DomainRuleBroken_ThrowsValidationErrorAndWritesNothing()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var lot = await AddLotAsync(ct);
+
+        // Off the 15-minute grid (R1).
+        await Assert.ThrowsAsync<DomainException>(() => CreateInLotAsync(lot.Id, Local(10, 10), Local(11, 10), ct));
+
+        Assert.Equal(0, await CountInLotAsync(lot, ct));
+    }
+
+    [Fact]
+    public async Task InLot_UnknownLot_ThrowsNotFound()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        await Assert.ThrowsAsync<NotFoundException>(() => CreateInLotAsync(Guid.CreateVersion7(), Local(10), Local(11), ct));
+    }
+
+    private async Task<Reservation> CreateInLotAsync(Guid lotId, DateTimeOffset start, DateTimeOffset end, CancellationToken ct)
+    {
+        await using var db = fixture.CreateDbContext();
+        var service = new CreateReservationService(db, new PostgresDatabaseErrors(), Clock, Sarajevo);
+        return await service.CreateInLotAsync(fixture.UserId, lotId, start, end, Plate, ct);
+    }
+
+    private async Task<int> CountInLotAsync(ParkingLot lot, CancellationToken ct)
+    {
+        var spaceIds = lot.Spaces.Select(s => s.Id).ToList();
+        await using var db = fixture.CreateDbContext();
+        return await db.Reservations.CountAsync(r => spaceIds.Contains(r.SpaceId), ct);
+    }
+
     // A fresh context per call, like one request per context in the API.
     private async Task<Reservation> CreateAsync(
         Guid spaceId,

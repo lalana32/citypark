@@ -13,6 +13,9 @@ public sealed class CreateReservationService(
     TimeProvider clock,
     TimeZoneInfo timeZone)
 {
+    /// <summary>Upper bound on inserts per lot request, so heavy contention cannot keep one request busy.</summary>
+    public const int MaxAttempts = 10;
+
     public async Task<Reservation> CreateAsync(
         Guid userId,
         Guid spaceId,
@@ -52,5 +55,60 @@ public sealed class CreateReservationService(
         }
 
         return reservation;
+    }
+
+    /// <summary>Reserves the first free active space of the lot, by label.</summary>
+    public async Task<Reservation> CreateInLotAsync(
+        Guid userId,
+        Guid lotId,
+        DateTimeOffset start,
+        DateTimeOffset end,
+        string plate,
+        CancellationToken cancellationToken = default)
+    {
+        var interval = new TimeInterval(start, end);
+        var licensePlate = new LicensePlate(plate);
+
+        var lot = await db.ParkingLots
+            .AsNoTracking()
+            .Include(l => l.Spaces)
+            .FirstOrDefaultAsync(l => l.Id == lotId, cancellationToken)
+            ?? throw new NotFoundException($"Parking lot {lotId} was not found.");
+
+        // Rules first: a broken rule is 422 even when the lot is full.
+        Reservation.EnsureBookable(lot, interval, timeZone, clock);
+
+        // Only a hint: a parallel request can take any of these before our insert.
+        var blocking = db.Reservations.Where(Reservation.ActiveAndOverlapping(interval));
+        var candidates = await db.ParkingLots
+            .Where(l => l.Id == lotId)
+            .SelectMany(l => l.Spaces)
+            .Where(s => s.IsActive && !blocking.Any(r => r.SpaceId == s.Id))
+            .OrderBy(s => s.Label)
+            .Select(s => s.Id)
+            .Take(MaxAttempts)
+            .ToListAsync(cancellationToken);
+
+        foreach (var spaceId in candidates)
+        {
+            var space = lot.Spaces.Single(s => s.Id == spaceId);
+            var reservation = Reservation.Create(lot, space, interval, licensePlate, userId, timeZone, clock);
+            db.Reservations.Add(reservation);
+
+            // Each save is its own transaction: after a failed statement Postgres would reject
+            // every later one in the same transaction (25P02).
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+                return reservation;
+            }
+            catch (DbUpdateException ex) when (databaseErrors.IsSpaceOverlapViolation(ex))
+            {
+                // Lost the race for this space. Without detaching, the next save would retry this insert too.
+                db.Reservations.Entry(reservation).State = EntityState.Detached;
+            }
+        }
+
+        throw new NoFreeSpaceException(lotId, interval);
     }
 }
