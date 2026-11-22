@@ -95,6 +95,7 @@ goes through the real HTTP pipeline against PostgreSQL 17.
 | `POST /api/v1/reservations/{id}/cancel` | 401 | 204 | 404 | 404 |
 | Admin route (`/_test/auth/admin`) | 401 | 403 | 403 | 200 |
 | `POST /api/v1/admin/lots`, `PUT /admin/lots/{id}`, `POST /admin/lots/{id}/spaces`, `POST /admin/lots/{lotId}/spaces/{spaceId}/deactivate` | 401 | 403 | 403 | see `AdminEndpointsTests` |
+| `GET /api/v1/admin/reservations`, `POST /admin/reservations/{id}/cancel` | 401 | 403 | 403 | see `AdminReservationEndpointsTests` |
 
 Notes:
 
@@ -102,9 +103,10 @@ Notes:
   by mistake fails the test.
 - Register and login are covered in `AuthenticationEndpointsTests` and `RateLimitingTests`.
 - Another user's reservation is `404`, not `403`, so the API never confirms that an id exists.
-- The reservation routes act only on the caller's own reservations, also for an admin. The
-  product brief lets an admin view and cancel any reservation; that needs its own endpoint, which
-  will get its own rows here.
+- The reservation routes act only on the caller's own reservations, also for an admin. Viewing
+  and cancelling any reservation goes through the admin reservation routes (CP-028).
+- `AdminReservationEndpointsTests` moves the fake clock (to one minute before a start, or into a
+  reservation), so it has a class and a factory of its own and restores the clock in `finally`.
 - The admin routes (CP-027) get `{}` as the body, which most of them reject with 400. A 403
   proves that authorization runs before validation. The Admin column is in
   `tests/CityPark.Api.Tests/Admin/AdminEndpointsTests.cs`, which checks each acceptance criterion
