@@ -99,7 +99,7 @@ Every endpoint requires sign-in: without a valid session cookie it returns **401
 
 | Endpoint | Success | Errors |
 |---|---|---|
-| `POST /api/v1/reservations` | **201** with a `Location` header (`/api/v1/reservations/{id}`) and the reservation, including the stored `price` | 400 for a missing or malformed field; 404 for an unknown space; **409** when the space already has an overlapping Active reservation (R6); 422 for a broken booking rule (R1–R5, R11, R14) |
+| `POST /api/v1/reservations` | **201** with a `Location` header (`/api/v1/reservations/{id}`) and the reservation, including the stored `price` and the `spaceLabel` it got | 400 for a missing or malformed field, or for both or neither of `spaceId` and `lotId`; 404 for an unknown space or lot; **409** when the space already has an overlapping Active reservation (R6), or when the lot has no free space; 422 for a broken booking rule (R1–R5, R11, R14) |
 | `GET /api/v1/reservations?page=&pageSize=` | 200 with a page of own reservations (default `page=1`, `pageSize=20`) | 400 for page or page size below 1 |
 | `GET /api/v1/reservations/{id}` | 200 with the reservation | **404** for an unknown id **and for another user's reservation** |
 | `POST /api/v1/reservations/{id}/cancel` | 204 | **404** as above (the reservation stays Active); **409** when it is already cancelled; **422** once it has started (R9) |
@@ -133,6 +133,27 @@ Request body of the create endpoint:
 `InProgress` is used instead of `Active`, so it cannot be confused with the stored status Active ([product brief, glossary](product-brief.md#7-domain-glossary)).
 
 Implemented by `OwnReservationQueryService` (`ListAsync` and `GetAsync`); tested against PostgreSQL in `OwnReservationQueryServiceTests`.
+
+### Automatic space assignment
+
+Instead of `spaceId`, the body may name a lot with `lotId`; the system then picks the space. Added in CP-030.
+
+```json
+{
+  "lotId": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7d01",
+  "start": "2026-12-01T10:00:00+01:00",
+  "end": "2026-12-01T11:30:00+01:00",
+  "plate": "A12-K-345"
+}
+```
+
+- **Exactly one** of `spaceId` and `lotId`. Both or neither gives **400** with the message under both keys in `errors`.
+- **`spaceId` works as before.** That space or a 409; the request never falls back to another space.
+- **Which space:** the first active space of the lot, ordered by label, that no Active reservation overlaps. No fairness or optimization. The response shows it in `spaceLabel`.
+- **Rules first:** a broken booking rule is 422 even when the lot is full.
+- **Parallel requests:** the free spaces are only candidates; the exclusion constraint decides ([ADR-002](adr/0002-overlap-prevention-with-exclusion-constraint.md#create-reservation-by-lot)). A request that loses a space to a parallel request (`23P01`) tries the next candidate, up to `CreateReservationService.MaxAttempts` (10) inserts. When no candidate is left the answer is **409** and nothing is written.
+
+**Known limit:** under heavy load on a lot with more than 10 free spaces, a request can lose all 10 candidates and get 409 while a free space still exists. The client can simply send the request again.
 
 ## Admin: lots and spaces
 
