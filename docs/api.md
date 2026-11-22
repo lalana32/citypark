@@ -117,7 +117,7 @@ Request body of the create endpoint:
 
 **Why 404 and not 403 for another user's reservation:** 403 would confirm that the id exists, so ids of other users could be probed. The owner is part of the query, so a foreign row is never even read ([product brief, R9](product-brief.md)).
 
-**Why the customer cancel ignores the Admin role:** these routes act on the caller's own reservations only. Cancelling any reservation at any time is a separate admin endpoint.
+**Why the customer cancel ignores the Admin role:** these routes act on the caller's own reservations only. Cancelling any reservation at any time is a separate admin endpoint ([Admin: reservations](#admin-reservations)).
 
 - **Order:** start time descending (newest first), then id descending.
 - **Fields per item:** `id`, `lotName`, `spaceLabel`, `start`, `end` (UTC, [ADR-004](adr/0004-utc-storage-and-sarajevo-business-day.md)), `plate`, `price`, `currency`, `state`.
@@ -178,3 +178,42 @@ Deactivating an inactive space again returns 204. There is no route to reactivat
 **Known limit:** the deactivation check and a new reservation are not serialized. A reservation created in the milliseconds between the check and the save can land on a space that becomes inactive. Closing that gap would mean locking the space row on every reservation, which was not worth it for a rare admin action; the admin sees the reservation in the list and can cancel it.
 
 Implemented by `AdminLotService`; tested against PostgreSQL in `AdminLotServiceTests` and over HTTP in `AdminEndpointsTests`.
+
+## Admin: reservations
+
+Every user's reservations for the Admin role, OpenAPI tag `Admin`. Added in CP-028. Without a session cookie both routes return **401**; a signed-in customer gets **403**.
+
+| Endpoint | Success | Errors |
+|---|---|---|
+| `GET /api/v1/admin/reservations?lotId=&from=&to=&status=&page=&pageSize=` | 200 with a page of reservations of all users (default `page=1`, `pageSize=20`) | **400** for an unknown `status`, `from` after `to`, a malformed value, or page or page size below 1 |
+| `POST /api/v1/admin/reservations/{id}/cancel` | **200** with the cancelled reservation | 404 for an unknown id; **409** when it is already cancelled |
+
+- **Filters** are optional and combine with AND:
+  - `lotId`: only reservations in that lot. An unknown lot gives an empty page, not 404.
+  - `from`, `to`: local Europe/Sarajevo dates (`2026-12-01`), both inclusive, matched against the day the reservation **starts**. A reservation at 00:00 local on 3 December is 23:00 UTC on 2 December and is listed under 3 December ([ADR-004](adr/0004-utc-storage-and-sarajevo-business-day.md)).
+  - `status`: the stored status, `Active` or `Cancelled`. The derived `state` is not a filter, because it depends on the time of the request.
+- **Order:** start time descending, then id descending, as in the customer's list.
+- **Fields per item:** the fields of the [customer's list](#own-reservations) plus `userId`, `lotId`, `spaceId` and `status`.
+- **Cancel at any time:** the admin may cancel before, during or after the reservation (R9). It uses the same `CancelReservationService` as the customer route, with the Administrator actor, so the rule lives in the domain only. It answers 200 with the body instead of 204, so the admin sees whose reservation was cancelled.
+
+```json
+{
+  "id": "019ad0a5-1b2c-7d3e-8f40-5a6b7c8d9e01",
+  "userId": "019ad0a3-2f1e-7c4d-8b5a-6e7f8091a2b3",
+  "lotId": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7d01",
+  "lotName": "Centar",
+  "spaceId": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e02",
+  "spaceLabel": "A-02",
+  "start": "2026-12-01T09:00:00+00:00",
+  "end": "2026-12-01T10:30:00+00:00",
+  "plate": "A12K345",
+  "price": 5.00,
+  "currency": "BAM",
+  "status": "Cancelled",
+  "state": "Cancelled"
+}
+```
+
+There is no export or report (out of scope of CP-028).
+
+Implemented by `AdminReservationQueryService` and `CancelReservationService`; tested against PostgreSQL in `AdminReservationQueryServiceTests` and over HTTP in `AdminReservationEndpointsTests`.
