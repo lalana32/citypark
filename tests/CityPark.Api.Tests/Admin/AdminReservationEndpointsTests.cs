@@ -11,21 +11,26 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace CityPark.Api.Tests.Admin;
 
-// A class of its own, so moving the shared fake clock cannot affect other tests. "Now" starts at 08:00 local
-// on 1 December 2026 (ClockedApiFactory). 403 for a customer is in AuthorizationMatrixTests.
+// A class of its own, so moving the shared fake clock cannot affect other tests.
+// 403 for a customer is in AuthorizationMatrixTests.
 public class AdminReservationEndpointsTests(ClockedApiFactory factory) : IClassFixture<ClockedApiFactory>
 {
     private static int _plateNumber;
+
+    private static int _dayNumber;
+
+    private FakeTimeProvider Clock => (FakeTimeProvider)factory.Services.GetRequiredService<TimeProvider>();
 
     [Fact]
     public async Task List_ByLot_ReturnsTheReservationsOfEveryCustomer()
     {
         var ct = TestContext.Current.CancellationToken;
+        var day = StartNewDay();
         var lot = await TestLots.AddAsync(factory, TestLots.UniqueName("All"), spaces: 2, inactiveSpaces: 0, ct);
         using var customerA = await SignedInCustomerAsync();
         using var customerB = await SignedInCustomerAsync();
-        var a = await ReserveAsync(customerA, lot.Spaces.First(), "2026-12-01T09:00:00Z", ct);
-        var b = await ReserveAsync(customerB, lot.Spaces.Last(), "2026-12-01T09:00:00Z", ct);
+        var a = await ReserveAsync(customerA, lot.Spaces.First(), day.AddHours(2), ct);
+        var b = await ReserveAsync(customerB, lot.Spaces.Last(), day.AddHours(2), ct);
         using var admin = await SignedInAdminAsync();
 
         var page = await admin.GetFromJsonAsync<JsonElement>(Relative($"/api/v1/admin/reservations?lotId={lot.Id}"), ct);
@@ -41,10 +46,11 @@ public class AdminReservationEndpointsTests(ClockedApiFactory factory) : IClassF
     public async Task List_StatusCancelled_ReturnsOnlyCancelledReservations()
     {
         var ct = TestContext.Current.CancellationToken;
+        var day = StartNewDay();
         var lot = await TestLots.AddAsync(factory, TestLots.UniqueName("Status"), spaces: 1, inactiveSpaces: 0, ct);
         using var customer = await SignedInCustomerAsync();
-        var cancelled = await ReserveAsync(customer, lot.Spaces.First(), "2026-12-01T09:00:00Z", ct);
-        await ReserveAsync(customer, lot.Spaces.First(), "2026-12-01T11:00:00Z", ct);
+        var cancelled = await ReserveAsync(customer, lot.Spaces.First(), day.AddHours(2), ct);
+        await ReserveAsync(customer, lot.Spaces.First(), day.AddHours(4), ct);
         using (var cancel = await customer.PostAsync(Relative($"/api/v1/reservations/{cancelled}/cancel"), content: null, ct))
         {
             Assert.Equal(HttpStatusCode.NoContent, cancel.StatusCode);
@@ -79,65 +85,51 @@ public class AdminReservationEndpointsTests(ClockedApiFactory factory) : IClassF
     public async Task Cancel_ReservationStartingInOneMinute_Returns200WithStatusCancelled()
     {
         var ct = TestContext.Current.CancellationToken;
-        var clock = (FakeTimeProvider)factory.Services.GetRequiredService<TimeProvider>();
+        var day = StartNewDay();
+        var lot = await TestLots.AddAsync(factory, TestLots.UniqueName("Soon"), spaces: 1, inactiveSpaces: 0, ct);
+        using var customer = await SignedInCustomerAsync();
+        var id = await ReserveAsync(customer, lot.Spaces.First(), day.AddMinutes(15), ct);
+        using var admin = await SignedInAdminAsync();
 
-        // 08:14 local, one minute before a reservation on the 15-minute grid starts.
-        clock.SetUtcNow(ClockedApiFactory.Now.AddMinutes(14));
-        try
-        {
-            var lot = await TestLots.AddAsync(factory, TestLots.UniqueName("Soon"), spaces: 1, inactiveSpaces: 0, ct);
-            using var customer = await SignedInCustomerAsync();
-            var id = await ReserveAsync(customer, lot.Spaces.First(), "2026-12-01T07:15:00Z", ct);
-            using var admin = await SignedInAdminAsync();
+        // 08:14 local, one minute before the 08:15 start.
+        Clock.SetUtcNow(day.AddMinutes(14));
+        using var response = await admin.PostAsync(Relative($"/api/v1/admin/reservations/{id}/cancel"), content: null, ct);
 
-            using var response = await admin.PostAsync(Relative($"/api/v1/admin/reservations/{id}/cancel"), content: null, ct);
-
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            var body = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
-            Assert.Equal(id, body.GetProperty("id").GetGuid());
-            Assert.Equal("Cancelled", body.GetProperty("status").GetString());
-            Assert.Equal("Cancelled", await CustomerStateAsync(customer, id, ct));
-        }
-        finally
-        {
-            clock.SetUtcNow(ClockedApiFactory.Now);
-        }
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
+        Assert.Equal(id, body.GetProperty("id").GetGuid());
+        Assert.Equal("Cancelled", body.GetProperty("status").GetString());
+        Assert.Equal("Cancelled", await CustomerStateAsync(customer, id, ct));
     }
 
     [Fact]
     public async Task Cancel_ReservationInProgress_Returns200_WhereACustomerGets422()
     {
         var ct = TestContext.Current.CancellationToken;
-        var clock = (FakeTimeProvider)factory.Services.GetRequiredService<TimeProvider>();
+        var day = StartNewDay();
         var lot = await TestLots.AddAsync(factory, TestLots.UniqueName("Started"), spaces: 1, inactiveSpaces: 0, ct);
         using var customer = await SignedInCustomerAsync();
-        var id = await ReserveAsync(customer, lot.Spaces.First(), "2026-12-01T09:00:00Z", ct);
+        var id = await ReserveAsync(customer, lot.Spaces.First(), day.AddHours(2), ct);
         using var admin = await SignedInAdminAsync();
 
         // 10:30 local, half an hour into the 10:00–11:00 reservation.
-        clock.SetUtcNow(ClockedApiFactory.Now.AddHours(2.5));
-        try
-        {
-            using var byCustomer = await customer.PostAsync(Relative($"/api/v1/reservations/{id}/cancel"), content: null, ct);
-            using var byAdmin = await admin.PostAsync(Relative($"/api/v1/admin/reservations/{id}/cancel"), content: null, ct);
+        Clock.SetUtcNow(day.AddHours(2.5));
+        using var byCustomer = await customer.PostAsync(Relative($"/api/v1/reservations/{id}/cancel"), content: null, ct);
+        using var byAdmin = await admin.PostAsync(Relative($"/api/v1/admin/reservations/{id}/cancel"), content: null, ct);
 
-            Assert.Equal(HttpStatusCode.UnprocessableEntity, byCustomer.StatusCode);
-            Assert.Equal(HttpStatusCode.OK, byAdmin.StatusCode);
-            Assert.Equal("Cancelled", (await byAdmin.Content.ReadFromJsonAsync<JsonElement>(ct)).GetProperty("state").GetString());
-        }
-        finally
-        {
-            clock.SetUtcNow(ClockedApiFactory.Now);
-        }
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, byCustomer.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, byAdmin.StatusCode);
+        Assert.Equal("Cancelled", (await byAdmin.Content.ReadFromJsonAsync<JsonElement>(ct)).GetProperty("state").GetString());
     }
 
     [Fact]
     public async Task Cancel_Twice_Returns409_AndUnknownId_Returns404()
     {
         var ct = TestContext.Current.CancellationToken;
+        var day = StartNewDay();
         var lot = await TestLots.AddAsync(factory, TestLots.UniqueName("Twice"), spaces: 1, inactiveSpaces: 0, ct);
         using var customer = await SignedInCustomerAsync();
-        var id = await ReserveAsync(customer, lot.Spaces.First(), "2026-12-01T09:00:00Z", ct);
+        var id = await ReserveAsync(customer, lot.Spaces.First(), day.AddHours(2), ct);
         using var admin = await SignedInAdminAsync();
         using (var first = await admin.PostAsync(Relative($"/api/v1/admin/reservations/{id}/cancel"), content: null, ct))
         {
@@ -152,16 +144,24 @@ public class AdminReservationEndpointsTests(ClockedApiFactory factory) : IClassF
         Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
     }
 
+    // FakeTimeProvider cannot go back, and tests of a class run one after another, so each test
+    // moves the clock forward to 08:00 local on a day of its own and books on that day.
+    private DateTimeOffset StartNewDay()
+    {
+        var day = ClockedApiFactory.Now.AddDays(Interlocked.Increment(ref _dayNumber));
+        Clock.SetUtcNow(day);
+        return day;
+    }
+
     private static string NextPlate()
     {
         var n = Interlocked.Increment(ref _plateNumber);
         return $"E{n / 1000:00}K{n % 1000:000}";
     }
 
-    // One hour from the given UTC start, booked through the customer API.
-    private static async Task<Guid> ReserveAsync(HttpClient customer, ParkingSpace space, string startUtc, CancellationToken ct)
+    // One hour from the given start, booked through the customer API.
+    private static async Task<Guid> ReserveAsync(HttpClient customer, ParkingSpace space, DateTimeOffset start, CancellationToken ct)
     {
-        var start = DateTimeOffset.Parse(startUtc, System.Globalization.CultureInfo.InvariantCulture);
         var body = new { spaceId = space.Id, start, end = start.AddHours(1), plate = NextPlate() };
 
         using var response = await customer.PostAsJsonAsync(Relative("/api/v1/reservations"), body, ct);
