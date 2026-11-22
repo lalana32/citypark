@@ -27,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<CancelReservationService>();
         services.AddScoped<OwnReservationQueryService>();
         services.AddScoped<AdminLotService>();
+        services.AddScoped<AdminReservationQueryService>();
 
         return services;
     }
