@@ -168,12 +168,11 @@ public sealed class AdminLotServiceTests(PostgresFixture fixture) : IClassFixtur
         return await action(new AdminLotService(db, new PostgresDatabaseErrors(), new FakeTimeProvider(now)));
     }
 
-    private Task RunAsync(DateTimeOffset now, Func<AdminLotService, Task> action) =>
-        RunAsync(now, async service =>
-        {
-            await action(service);
-            return true;
-        });
+    private async Task RunAsync(DateTimeOffset now, Func<AdminLotService, Task> action)
+    {
+        await using var db = fixture.CreateDbContext();
+        await action(new AdminLotService(db, new PostgresDatabaseErrors(), new FakeTimeProvider(now)));
+    }
 
     private async Task<(ParkingLot Lot, ParkingSpace Space)> AddLotWithSpaceAsync(CancellationToken ct)
     {
