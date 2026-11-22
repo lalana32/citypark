@@ -9,12 +9,14 @@ updates:
     commit-message:
       prefix: chore(deps)
     groups:
-      # Test tooling is released together, so it is updated in one PR.
+      # Test packages are referenced by several test projects; one PR keeps them on one version.
       test-tooling:
         patterns:
           - xunit*
           - Microsoft.NET.Test.Sdk
           - coverlet.*
+          - Testcontainers.*
+          - Microsoft.Extensions.TimeProvider.Testing
       # ASP.NET Core and EF Core ship as one release; a package bumped alone fails the restore
       # with a downgrade error (NU1605). The EF Core provider and naming plugin build on it.
       dotnet-platform:
