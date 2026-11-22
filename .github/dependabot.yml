@@ -15,6 +15,23 @@ updates:
           - xunit*
           - Microsoft.NET.Test.Sdk
           - coverlet.*
+      # ASP.NET Core and EF Core ship as one release; a package bumped alone fails the restore
+      # with a downgrade error (NU1605). The EF Core provider and naming plugin build on it.
+      dotnet-platform:
+        patterns:
+          - Microsoft.AspNetCore.*
+          - Microsoft.EntityFrameworkCore*
+          - Microsoft.Extensions.Hosting.Abstractions
+          - Npgsql.EntityFrameworkCore.PostgreSQL
+          - EFCore.NamingConventions
+    ignore:
+      # The project stays on the .NET 10 LTS line (docs/decisions.md, D1); a major upgrade is a card of its own.
+      - dependency-name: Microsoft.AspNetCore.*
+        update-types: [version-update:semver-major]
+      - dependency-name: Microsoft.EntityFrameworkCore*
+        update-types: [version-update:semver-major]
+      - dependency-name: Npgsql.EntityFrameworkCore.PostgreSQL
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: /
