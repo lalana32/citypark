@@ -46,6 +46,7 @@ public class AuthorizationMatrixTests(ClockedApiFactory factory) : IClassFixture
         { "/api/v1/lots", HttpStatusCode.OK },
         { $"/api/v1/lots/{AnyId}", HttpStatusCode.NotFound },
         { $"/api/v1/lots/{AnyId}/availability?start=2026-12-01T09:00:00Z&end=2026-12-01T10:00:00Z", HttpStatusCode.NotFound },
+        { $"/api/v1/lots/{AnyId}/quote?start=2026-12-01T09:00:00Z&end=2026-12-01T10:00:00Z", HttpStatusCode.NotFound },
         { "/api/v1/auth/csrf", HttpStatusCode.OK },
         { "/health/live", HttpStatusCode.OK },
     };
