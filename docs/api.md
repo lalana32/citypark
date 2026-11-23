@@ -91,6 +91,25 @@ Public: no sign-in needed. Added in CP-023.
 
 **Known limit:** a value without an offset (`2026-12-01T10:00:00`) is parsed in the server's time zone by ASP.NET Core binding, so clients must always send one.
 
+## Price quote
+
+`GET /api/v1/lots/{id}/quote?start=...&end=...` returns the price a reservation of the lot for `[start, end)` would get. Public and read-only: nothing is reserved and free spaces are not checked (use [availability](#availability) for that). Added in CP-031.
+
+- **`start` and `end`** follow the same format and the same booking rules as [availability](#availability), with the same 400, 404 and 422 cases. A quote is only given for an interval that can be booked.
+- **`billedHours`** is the rounded duration: every started hour is billed as a full hour (R8).
+- **`price`** is `billedHours × hourlyPrice` in `currency`, computed by the same domain method as a reservation's price. It equals the price of a reservation made for the same interval while the lot's hourly price is unchanged.
+
+```json
+{
+  "lotId": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7d01",
+  "start": "2026-12-01T10:00:00+01:00",
+  "end": "2026-12-01T11:15:00+01:00",
+  "billedHours": 2,
+  "price": 5.00,
+  "currency": "BAM"
+}
+```
+
 ## Own reservations
 
 The signed-in customer's reservations. Only the caller's own reservations are returned; the user id comes from the sign-in cookie, never from a parameter ([ADR-003](adr/0003-cookie-authentication-with-identity.md)). Added in CP-024.
