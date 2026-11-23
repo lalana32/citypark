@@ -45,6 +45,20 @@ public static class LotEndpoints
             .WithResponseExample(StatusCodes.Status200OK, LotExamples.Availability)
             .WithResponseExample(StatusCodes.Status422UnprocessableEntity, LotExamples.OffGrid, "application/problem+json");
 
+        lots.MapGet("/{id:guid}/quote", GetQuoteAsync)
+            .WithValidation<AvailabilityQuery>()
+            .WithSummary("The price a reservation of the lot for one interval would get; every started hour is billed (R8).")
+            .WithDescription(
+                "Read-only: nothing is reserved and free spaces are not checked. The interval must be bookable " +
+                "(15-minute grid, at least 30 minutes, opening hours), so the quote equals the price of a reservation " +
+                "made for the same interval while the rate is unchanged. Encode + as %2B in the query string.")
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)
+            .WithParameterExample("start", LotExamples.Start)
+            .WithParameterExample("end", LotExamples.QuoteEnd)
+            .WithResponseExample(StatusCodes.Status200OK, LotExamples.Quote)
+            .WithResponseExample(StatusCodes.Status422UnprocessableEntity, LotExamples.OffGrid, "application/problem+json");
+
         return api;
     }
 
@@ -80,5 +94,22 @@ public static class LotEndpoints
 
         return TypedResults.Ok(AvailabilityResponse.From(
             id, TimeZoneInfo.ConvertTime(start, timeZone), TimeZoneInfo.ConvertTime(end, timeZone), result));
+    }
+
+    private static async Task<Ok<QuoteResponse>> GetQuoteAsync(
+        Guid id,
+        [AsParameters] AvailabilityQuery query,
+        QuoteService quotes,
+        [FromServices] TimeZoneInfo timeZone,
+        CancellationToken ct)
+    {
+        // ValidationFilter has already rejected a missing start or end.
+        var start = query.Start!.Value;
+        var end = query.End!.Value;
+
+        var quote = await quotes.GetQuoteAsync(id, start, end, ct);
+
+        return TypedResults.Ok(QuoteResponse.From(
+            id, TimeZoneInfo.ConvertTime(start, timeZone), TimeZoneInfo.ConvertTime(end, timeZone), quote));
     }
 }

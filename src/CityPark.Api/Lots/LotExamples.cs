@@ -30,6 +30,17 @@ internal static class LotExamples
             new FreeSpaceResponse(Guid.Parse("019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e17"), "A-17"),
         ]);
 
+    // 10:00–11:15: 75 minutes, billed as 2 hours (R8).
+    public const string QuoteEnd = "2026-12-01T11:15:00+01:00";
+
+    public static readonly QuoteResponse Quote = new(
+        LotId,
+        DateTimeOffset.Parse(Start, CultureInfo.InvariantCulture),
+        DateTimeOffset.Parse(QuoteEnd, CultureInfo.InvariantCulture),
+        BilledHours: 2,
+        Price: 5.00m,
+        Currency: "BAM");
+
     public static readonly HttpValidationProblemDetails OffGrid = new(
         new Dictionary<string, string[]>
         {

@@ -23,6 +23,7 @@ public static class DependencyInjection
 
         services.AddScoped<LotQueryService>();
         services.AddScoped<AvailabilityService>();
+        services.AddScoped<QuoteService>();
         services.AddScoped<CreateReservationService>();
         services.AddScoped<CancelReservationService>();
         services.AddScoped<OwnReservationQueryService>();
