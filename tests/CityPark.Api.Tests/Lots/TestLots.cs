@@ -10,14 +10,23 @@ internal static class TestLots
 {
     public static readonly OpeningHours DayHours = new(new TimeOnly(7, 0), new TimeOnly(22, 0));
 
+    public static Task<ParkingLot> AddAsync(
+        ApiFactory factory,
+        string name,
+        int spaces,
+        int inactiveSpaces,
+        CancellationToken ct) =>
+        AddAsync(factory, name, spaces, inactiveSpaces, new Rate(2.50m, "BAM"), ct);
+
     public static async Task<ParkingLot> AddAsync(
         ApiFactory factory,
         string name,
         int spaces,
         int inactiveSpaces,
+        Rate rate,
         CancellationToken ct)
     {
-        var lot = ParkingLot.Create(name, "Ferhadija 1", new Rate(2.50m, "BAM"), DayHours);
+        var lot = ParkingLot.Create(name, "Ferhadija 1", rate, DayHours);
 
         for (var number = 1; number <= spaces; number++)
         {
