@@ -118,6 +118,25 @@ public class RateTests
         Assert.Equal(expected, rate.PriceFor(TimeSpan.FromMinutes(minutes)));
     }
 
+    [Theory]
+    [InlineData(30, 1)]
+    [InlineData(60, 1)]
+    [InlineData(61, 2)]
+    [InlineData(75, 2)]
+    [InlineData(121, 3)]
+    public void BilledHours_CountsEveryStartedHour(int minutes, int expected)
+    {
+        Assert.Equal(expected, Rate.BilledHours(TimeSpan.FromMinutes(minutes)));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-30)]
+    public void BilledHours_WhenDurationIsNotPositive_ThrowsDomainException(int minutes)
+    {
+        Assert.Throws<DomainException>(() => Rate.BilledHours(TimeSpan.FromMinutes(minutes)));
+    }
+
     [Fact]
     public void PriceFor_KeepsCentsOfHourlyPrice()
     {
