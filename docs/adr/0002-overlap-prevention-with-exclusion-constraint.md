@@ -260,3 +260,19 @@ rejected for a free interval.
 cannot retry a transaction it did not start.
 
 The scenarios are described in [docs/testing.md](../testing.md#concurrency-tests).
+
+## Create reservation by lot
+
+Added in CP-030 (2026-11-23). `CreateReservationService.CreateInLotAsync(userId, lotId, start,
+end, plate)` implements the space assignment from [Decision](#decision):
+
+1. The booking rules are checked first, as in `CreateAsync`.
+2. One query returns the active spaces of the lot that no Active reservation overlaps, ordered by
+   label, at most `MaxAttempts` (10). It is a hint only; a parallel request can take any of them.
+3. Each candidate gets its own `SaveChanges`. On `23P01` the failed reservation is detached, as
+   the lesson under [Validation](#validation) requires, and the next candidate is tried. No
+   explicit transaction surrounds the loop: after a failed statement PostgreSQL rejects every
+   later one in the same transaction (`25P02`).
+4. With no candidate left it throws `NoFreeSpaceException`, a `DomainConflictException` (409).
+
+`CreateAsync` with an explicit space is unchanged and never falls back to another space.
