@@ -40,8 +40,19 @@ public class RequestValidationTests(ApiFactory factory) : IClassFixture<ApiFacto
         Assert.Equal("plate", Assert.Single(errors.EnumerateObject()).Name);
     }
 
+    [Fact]
+    public async Task LotIdInsteadOfSpaceId_PassesValidation()
+    {
+        var body = ValidObject();
+        body.Remove("spaceId");
+        body["lotId"] = "0192f3c4-0000-7000-8000-000000000002";
+
+        var (status, _, _) = await PostAsync(body.ToJsonString());
+
+        Assert.Equal(HttpStatusCode.OK, status);
+    }
+
     [Theory]
-    [InlineData("spaceId")]
     [InlineData("start")]
     [InlineData("end")]
     [InlineData("plate")]
@@ -60,8 +71,9 @@ public class RequestValidationTests(ApiFactory factory) : IClassFixture<ApiFacto
     {
         var errors = await PostExpectingBadRequestAsync("{}");
 
+        // No spaceId/lotId error yet: the one-of check runs only after the required fields pass.
         var fields = errors.EnumerateObject().Select(e => e.Name).Order(StringComparer.Ordinal);
-        Assert.Equal("end,plate,spaceId,start", string.Join(',', fields));
+        Assert.Equal("end,plate,start", string.Join(',', fields));
     }
 
     [Theory]
@@ -79,6 +91,7 @@ public class RequestValidationTests(ApiFactory factory) : IClassFixture<ApiFacto
 
     [Theory]
     [InlineData("spaceId", "\"not-a-guid\"")]
+    [InlineData("lotId", "\"not-a-guid\"")]
     [InlineData("start", "42")]
     [InlineData("end", "\"tomorrow\"")]
     [InlineData("plate", "true")]
