@@ -5,6 +5,21 @@ export type Route = `${string} ${string}`
 
 export const ANA = { id: '7c9e6679-7425-40de-944b-e07fc1f90ae7', email: 'ana@example.com', roles: ['Customer'] }
 
+export const CENTAR = {
+  id: '019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7d01',
+  name: 'Centar',
+  address: 'Ferhadija 1',
+  hourlyPrice: 2.5,
+  currency: 'BAM',
+  opensAt: '07:00:00',
+  closesAt: '22:00:00',
+  totalSpaces: 30,
+}
+
+export function page<T>(items: T[], totalPages = 1) {
+  return { items, page: 1, pageSize: 20, totalCount: items.length, totalPages }
+}
+
 export const csrfRoute = { 'GET /api/v1/auth/csrf': () => Response.json({ token: 'test-token' }) }
 
 /** Answers each "METHOD /path" with its handler and everything else with 404. */
