@@ -1,10 +1,11 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../api/client'
 import type { components } from '../../api/schema'
 import { sessionKey } from '../auth/api'
 import { lotsKey } from '../lots/api'
 
 export type Reservation = components['schemas']['ReservationResponse']
+export type ReservationPage = components['schemas']['PagedResultOfReservationResponse']
 export type Booking = { spaceId: string; start: string; end: string; plate: string }
 export type BookingField = 'start' | 'end' | 'plate'
 export type BookingErrors = { fields: Partial<Record<BookingField, string>>; form?: string }
@@ -12,6 +13,33 @@ export type BookingErrors = { fields: Partial<Record<BookingField, string>>; for
 type Problem = components['schemas']['HttpValidationProblemDetails']
 
 const BOOKING_FIELDS: readonly string[] = ['start', 'end', 'plate']
+const PAGE_SIZE = 10
+
+export const reservationsKey = ['reservations'] as const
+
+// The server allows a cancel until the start (R9); the screen stops offering it a bit earlier.
+export const CANCEL_CUTOFF_MINUTES = 15
+
+export function useMyReservations(page: number) {
+  return useQuery({
+    queryKey: [...reservationsKey, 'mine', page],
+    queryFn: async (): Promise<ReservationPage> => {
+      const { data, response } = await api.GET('/api/v1/reservations', {
+        params: { query: { page, pageSize: PAGE_SIZE } },
+      })
+      if (!data) {
+        throw new Error(`The reservations request failed with ${response.status}.`)
+      }
+      return data
+    },
+    placeholderData: keepPreviousData,
+  })
+}
+
+export function canCancel(reservation: Pick<Reservation, 'state' | 'start'>, now: number): boolean {
+  const remaining = new Date(reservation.start).getTime() - now
+  return reservation.state === 'Upcoming' && remaining >= CANCEL_CUTOFF_MINUTES * 60_000
+}
 
 export const SPACE_TAKEN = 'Someone has just booked this space. The free spaces are refreshed, so please pick another one.'
 export const UNEXPECTED_ERROR = 'Something went wrong. Please try again.'
