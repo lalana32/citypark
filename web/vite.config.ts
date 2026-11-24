@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
 import { defineConfig } from 'vite'
@@ -13,5 +14,8 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:5114',
     },
+  },
+  test: {
+    environment: 'jsdom',
   },
 })
