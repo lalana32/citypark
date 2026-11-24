@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { canCancel, formatPrice, toBookingErrors, UNEXPECTED_ERROR } from './api'
+import {
+  ALREADY_CANCELLED,
+  canCancel,
+  cancelErrorMessage,
+  formatPrice,
+  RESERVATION_NOT_FOUND,
+  toBookingErrors,
+  UNEXPECTED_ERROR,
+} from './api'
 
 describe('toBookingErrors', () => {
   it('puts a field rule next to its field', () => {
@@ -41,5 +49,25 @@ describe('canCancel', () => {
     for (const state of ['InProgress', 'Finished', 'Cancelled'] as const) {
       expect(canCancel({ state, start }, minutesBefore(60))).toBe(false)
     }
+  })
+})
+
+describe('cancelErrorMessage', () => {
+  it('shows the rule the server gives when the reservation has started meanwhile', () => {
+    const message = 'A customer can cancel a reservation only before it starts (R9).'
+
+    expect(cancelErrorMessage(422, { detail: message, errors: { general: [message] } })).toBe(message)
+  })
+
+  it('says a second cancel is not needed', () => {
+    expect(cancelErrorMessage(409, {})).toBe(ALREADY_CANCELLED)
+  })
+
+  it('says the reservation is gone', () => {
+    expect(cancelErrorMessage(404, {})).toBe(RESERVATION_NOT_FOUND)
+  })
+
+  it('falls back to a generic message for anything else', () => {
+    expect(cancelErrorMessage(500, undefined)).toBe(UNEXPECTED_ERROR)
   })
 })
