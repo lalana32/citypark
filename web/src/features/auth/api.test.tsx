@@ -1,38 +1,18 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { ANA, createTestQueryClient, csrfRoute as csrf, problem, stubApi } from '../../test/apiStub'
 import { AuthFormError, sessionKey, useLogin, useLogout, useSession } from './api'
 import { INVALID_CREDENTIALS } from './authErrors'
-
-const ANA = { id: '7c9e6679-7425-40de-944b-e07fc1f90ae7', email: 'ana@example.com', roles: ['Customer'] }
 
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
 })
 
-type Route = `${string} ${string}`
-
-function stubApi(routes: Record<Route, () => Response>) {
-  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-    const request = input instanceof Request ? input : new Request(input)
-    const route = `${request.method} ${new URL(request.url).pathname}` as Route
-    const respond = routes[route] ?? (() => new Response(null, { status: 404 }))
-    return respond()
-  })
-  vi.stubGlobal('fetch', fetchMock)
-  return fetchMock
-}
-
-const csrf = { 'GET /api/v1/auth/csrf': () => Response.json({ token: 'test-token' }) }
-
-function problem(status: number, body: object = {}) {
-  return Response.json(body, { status, headers: { 'Content-Type': 'application/problem+json' } })
-}
-
 function setup() {
-  const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+  const queryClient = createTestQueryClient()
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
