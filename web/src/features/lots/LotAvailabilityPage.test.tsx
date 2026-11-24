@@ -2,7 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { CENTAR, createTestQueryClient, problem, type Route, stubApi } from '../../test/apiStub'
+import { CENTAR, createTestQueryClient, problem, type Route as ApiRoute, stubApi } from '../../test/apiStub'
 import { LOT_NOT_FOUND } from './api'
 import { LotAvailabilityPage } from './LotAvailabilityPage'
 
@@ -12,8 +12,8 @@ afterEach(() => {
 })
 
 /** The lot route, plus the availability route when it has an answer. */
-function routes(respond?: () => Response): Record<Route, () => Response> {
-  const result: Record<Route, () => Response> = {}
+function routes(respond?: () => Response): Record<ApiRoute, () => Response> {
+  const result: Record<ApiRoute, () => Response> = {}
   result[`GET /api/v1/lots/${CENTAR.id}`] = () => Response.json(CENTAR)
   if (respond) {
     result[`GET /api/v1/lots/${CENTAR.id}/availability`] = respond
