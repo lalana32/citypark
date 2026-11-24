@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Pager } from '../../components/Pager'
 import { formatRate, formatWindow, type Lot, useLots } from '../lots/api'
+import { AddSpaceForm } from './AddSpaceForm'
 import { NEW_LOT, toLotValues, useSaveLot } from './api'
 import { LotForm } from './LotForm'
 
-// null: no form open; { lot: undefined }: a new lot; { lot }: editing that lot.
-type Editing = { lot?: Lot } | null
+// A lot form (no lot means a new one), the add-space form for a lot, or nothing open.
+type Editing = { kind: 'lot'; lot?: Lot } | { kind: 'space'; lot: Lot } | null
 
 export function AdminLotsPage() {
   const [page, setPage] = useState(1)
@@ -22,7 +23,7 @@ export function AdminLotsPage() {
     <section>
       <h2>Manage parking lots</h2>
       {saved && <p role="status">{saved}</p>}
-      {editing ? (
+      {editing?.kind === 'lot' && (
         <LotEditor
           key={editing.lot?.id ?? 'new'}
           lot={editing.lot}
@@ -32,8 +33,17 @@ export function AdminLotsPage() {
           }}
           onCancel={() => setEditing(null)}
         />
-      ) : (
-        <button type="button" onClick={() => open({})}>
+      )}
+      {editing?.kind === 'space' && (
+        <AddSpaceForm
+          key={editing.lot.id}
+          lot={editing.lot}
+          onAdded={(space) => setSaved(`Space ${space.label} added to ${editing.lot.name}.`)}
+          onClose={() => setEditing(null)}
+        />
+      )}
+      {!editing && (
+        <button type="button" onClick={() => open({ kind: 'lot' })}>
           New lot
         </button>
       )}
@@ -63,8 +73,15 @@ export function AdminLotsPage() {
                   <td>{formatWindow(lot)}</td>
                   <td>{lot.totalSpaces}</td>
                   <td>
-                    <button type="button" onClick={() => open({ lot })} aria-label={`Edit ${lot.name}`}>
+                    <button type="button" onClick={() => open({ kind: 'lot', lot })} aria-label={`Edit ${lot.name}`}>
                       Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => open({ kind: 'space', lot })}
+                      aria-label={`Add a space to ${lot.name}`}
+                    >
+                      Add space
                     </button>
                   </td>
                 </tr>

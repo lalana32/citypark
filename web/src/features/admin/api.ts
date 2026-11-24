@@ -85,6 +85,52 @@ export function useSaveLot(id: string | undefined) {
   })
 }
 
+export type Space = components['schemas']['SpaceResponse']
+
+/** 400, 409 or 422 on a new space; the message belongs next to the label field. */
+export class SpaceLabelError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'SpaceLabelError'
+  }
+}
+
+export function useAddSpace(lotId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (label: string): Promise<Space> => {
+      const { data, error, response } = await api.POST('/api/v1/admin/lots/{id}/spaces', {
+        params: { path: { id: lotId } },
+        body: { label },
+      })
+      if (data) {
+        return data
+      }
+      const problem = error as Problem | undefined
+      switch (response.status) {
+        case 401:
+          throw new SignedOutError()
+        case 403:
+          throw new SpaceLabelError(NOT_AN_ADMIN)
+        case 400:
+        case 409:
+        case 422:
+          throw new SpaceLabelError(problem?.errors?.label?.[0] ?? problem?.detail ?? UNEXPECTED_ERROR)
+        default:
+          throw new Error(`The space request failed with ${response.status}.`)
+      }
+    },
+    // The lot's space count has changed.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: lotsKey }),
+    onError: (error) => {
+      if (error instanceof SignedOutError) {
+        queryClient.setQueryData(sessionKey, null)
+      }
+    },
+  })
+}
+
 export function toLotErrors(problem: Problem | undefined): LotErrors {
   const result: LotErrors = { fields: {} }
   const unmatched: string[] = []
