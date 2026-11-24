@@ -44,3 +44,8 @@ function toMinutes(time: string): number {
 function toTime(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
 }
+
+/** Today's date on the lot, as "YYYY-MM-DD". */
+export function lotToday(now = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: LOT_TIME_ZONE }).format(now)
+}
