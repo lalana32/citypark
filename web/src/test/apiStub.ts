@@ -5,6 +5,8 @@ export type Route = `${string} ${string}`
 
 export const ANA = { id: '7c9e6679-7425-40de-944b-e07fc1f90ae7', email: 'ana@example.com', roles: ['Customer'] }
 
+export const ADMIN = { id: '3f2504e0-4f89-41d3-9a0c-0305e82c3301', email: 'admin@example.com', roles: ['Admin'] }
+
 export const CENTAR = {
   id: '019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7d01',
   name: 'Centar',
