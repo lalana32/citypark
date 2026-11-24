@@ -11,3 +11,27 @@ header,
 main {
   padding: 1rem 1.5rem;
 }
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.85em;
+  border: 1px solid currentColor;
+}
+
+.badge-Upcoming {
+  color: #1d6fd1;
+}
+
+.badge-InProgress {
+  color: #1f8a46;
+}
+
+.badge-Finished {
+  color: #6b7280;
+}
+
+.badge-Cancelled {
+  color: #c0392b;
+}
