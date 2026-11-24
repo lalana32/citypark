@@ -65,3 +65,44 @@ jobs:
           name: test-results
           path: TestResults
           retention-days: 7
+
+  web:
+    name: Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js (version from web/.nvmrc)
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # Installs exactly what package-lock.json lists, and fails if it is out of date.
+      - name: Install
+        run: npm ci
+
+      # The Build and test job keeps openapi/v1.json equal to the API; this keeps the types equal to it.
+      - name: Check generated API types
+        run: |
+          npm run generate
+          git diff --exit-code -- src/api/schema.d.ts
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build

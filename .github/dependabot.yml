@@ -1,5 +1,4 @@
 # Dependabot opens PRs for outdated dependencies; each one has to pass CI like any other PR.
-# npm is added together with the frontend (no package.json exists yet).
 version: 2
 updates:
   - package-ecosystem: nuget
@@ -38,6 +37,28 @@ updates:
         update-types: [version-update:semver-major]
       # Microsoft.AspNetCore.OpenApi 10.x is built on Microsoft.OpenApi 2.x.
       - dependency-name: Microsoft.OpenApi
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      # Released together and checked against each other's versions.
+      test-tooling:
+        patterns:
+          - vitest
+          - jsdom
+          - "@testing-library/*"
+      openapi:
+        patterns:
+          - openapi-typescript
+          - openapi-fetch
+    ignore:
+      # openapi-typescript supports TypeScript 5 only (docs/decisions.md, D4).
+      - dependency-name: typescript
         update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
