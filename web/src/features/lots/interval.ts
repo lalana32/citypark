@@ -45,6 +45,25 @@ function toTime(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
 }
 
+const lotDate = new Intl.DateTimeFormat('en-GB', {
+  timeZone: LOT_TIME_ZONE,
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+})
+const lotTime = new Intl.DateTimeFormat('en-GB', {
+  timeZone: LOT_TIME_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
+
+/** Any ISO instant -> "1 Dec 2026, 10:00" as the clock on the lot shows it. */
+export function formatLotDateTime(instant: string): string {
+  const date = new Date(instant)
+  return `${lotDate.format(date)}, ${lotTime.format(date)}`
+}
+
 /** Today's date on the lot, as "YYYY-MM-DD". */
 export function lotToday(now = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: LOT_TIME_ZONE }).format(now)
