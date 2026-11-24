@@ -3,6 +3,7 @@ import { LoginPage } from './features/auth/LoginPage'
 import { RegisterPage } from './features/auth/RegisterPage'
 import { RequireAuth } from './features/auth/RequireAuth'
 import { UserMenu } from './features/auth/UserMenu'
+import { LotAvailabilityPage } from './features/lots/LotAvailabilityPage'
 import { LotsPage } from './features/lots/LotsPage'
 
 function Layout() {
@@ -29,6 +30,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/lots" element={<LotsPage />} />
+        <Route path="/lots/:id" element={<LotAvailabilityPage />} />
         <Route element={<RequireAuth />}>
           <Route index element={<p>Parking reservations.</p>} />
         </Route>
