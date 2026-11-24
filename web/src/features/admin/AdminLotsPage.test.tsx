@@ -13,6 +13,7 @@ afterEach(() => {
 const CREATE = 'POST /api/v1/admin/lots'
 const UPDATE = `PUT /api/v1/admin/lots/${CENTAR.id}`
 const LIST = 'GET /api/v1/lots'
+const ADD_SPACE = `POST /api/v1/admin/lots/${CENTAR.id}/spaces`
 
 function routes(user: object, extra: Record<ApiRoute, () => Response> = {}) {
   const result: Record<ApiRoute, () => Response> = {
@@ -115,5 +116,35 @@ describe('admin lots', () => {
 
     expect(await screen.findByText(message)).toBeDefined()
     expect(screen.getByLabelText('Closes at').getAttribute('aria-invalid')).toBe('true')
+  })
+})
+
+describe('admin spaces', () => {
+  it('adds a space, clears the field for the next one and reloads the lots', async () => {
+    const space = { id: '019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e31', label: 'B-01', isActive: true }
+    const fetchMock = stubApi(routes(ADMIN, { [ADD_SPACE]: () => Response.json(space, { status: 201 }) }))
+    renderApp()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a space to Centar' }))
+    type('Label', 'b-01')
+    fireEvent.click(screen.getByRole('button', { name: 'Add space' }))
+
+    expect((await screen.findByRole('status')).textContent).toBe('Space B-01 added to Centar.')
+    expect(await calls(fetchMock, ADD_SPACE)[0].json()).toEqual({ label: 'b-01' })
+    await vi.waitFor(() => expect(screen.getByLabelText<HTMLInputElement>('Label').value).toBe(''))
+    await vi.waitFor(() => expect(calls(fetchMock, LIST)).toHaveLength(2))
+  })
+
+  it('shows a duplicate label next to the field', async () => {
+    const detail = "Lot 'Centar' already has a space labelled 'B-01'."
+    stubApi(routes(ADMIN, { [ADD_SPACE]: () => problem(409, { detail }) }))
+    renderApp()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a space to Centar' }))
+    type('Label', 'B-01')
+    fireEvent.click(screen.getByRole('button', { name: 'Add space' }))
+
+    expect(await screen.findByText(detail)).toBeDefined()
+    expect(screen.getByLabelText('Label').getAttribute('aria-invalid')).toBe('true')
   })
 })
