@@ -1836,7 +1836,7 @@
             }
           }
         },
-        "description": "Free spaces of a lot for one interval. `start` and `end` are echoed with the\r\nEurope/Sarajevo offset; `totalSpaces` counts active spaces."
+        "description": "Free spaces of a lot for one interval. `start` and `end` are echoed with the\nEurope/Sarajevo offset; `totalSpaces` counts active spaces."
       },
       "CreateReservationRequest": {
         "required": [
@@ -1883,7 +1883,7 @@
             ]
           }
         },
-        "description": "Body for creating a reservation: exactly one of SpaceId (that space) or LotId (the first free\r\nspace of the lot). Only the shape is checked here (400); the business rules R1–R14 stay in the domain (422)."
+        "description": "Body for creating a reservation: exactly one of SpaceId (that space) or LotId (the first free\nspace of the lot). Only the shape is checked here (400); the business rules R1–R14 stay in the domain (422)."
       },
       "CreateSpaceRequest": {
         "required": [
@@ -2099,7 +2099,7 @@
             "format": "time"
           }
         },
-        "description": "Body for creating or updating a lot. Only the shape is checked here (400); a non-positive price,\r\na bad currency or a window that closes before it opens are domain rules (422)."
+        "description": "Body for creating or updating a lot. Only the shape is checked here (400); a non-positive price,\na bad currency or a window that closes before it opens are domain rules (422)."
       },
       "LotResponse": {
         "required": [
@@ -2385,7 +2385,7 @@
             "type": "string"
           }
         },
-        "description": "The price a reservation of the lot for this interval would get. `start` and `end` are\r\nechoed with the Europe/Sarajevo offset; `billedHours` counts every started hour (R8)."
+        "description": "The price a reservation of the lot for this interval would get. `start` and `end` are\nechoed with the Europe/Sarajevo offset; `billedHours` counts every started hour (R8)."
       },
       "RegisterRequest": {
         "required": [
