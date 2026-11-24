@@ -81,8 +81,8 @@ export function useLogout() {
       }
     },
     onSuccess: () => {
-      // Drop everything cached for the old user, then record "signed out".
-      queryClient.removeQueries()
+      // Drop the old user's data. The session query stays so the mounted header sees the change.
+      queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== sessionKey[0] })
       queryClient.setQueryData(sessionKey, null)
     },
   })
