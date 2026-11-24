@@ -18,6 +18,9 @@ public class ApiFactory : WebApplicationFactory<Program>
 
     protected virtual string ConnectionString => UnreachableDatabase;
 
+    /// <summary>False keeps the test-only routes out, so the OpenAPI document is the real contract.</summary>
+    protected virtual bool AddTestEndpoints => true;
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
@@ -27,10 +30,16 @@ public class ApiFactory : WebApplicationFactory<Program>
         // Admin__Email or Admin__Password set on the developer machine must not reach the tests.
         builder.UseSetting("Admin:Email", string.Empty);
         builder.UseSetting("Admin:Password", string.Empty);
-        builder.ConfigureServices(services => services
-            .AddSingleton<IStartupFilter, TestClientAddress>()
-            .AddSingleton<IStartupFilter, ThrowingEndpoints>()
-            .AddSingleton<IStartupFilter, ValidationEndpoints>()
-            .AddSingleton<IStartupFilter, AuthEndpoints>());
+        builder.ConfigureServices(services =>
+        {
+            services.AddSingleton<IStartupFilter, TestClientAddress>();
+            if (AddTestEndpoints)
+            {
+                services
+                    .AddSingleton<IStartupFilter, ThrowingEndpoints>()
+                    .AddSingleton<IStartupFilter, ValidationEndpoints>()
+                    .AddSingleton<IStartupFilter, AuthEndpoints>();
+            }
+        });
     }
 }
