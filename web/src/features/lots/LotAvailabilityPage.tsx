@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import {
   type Availability,
   AvailabilityError,
@@ -13,6 +13,11 @@ import {
 } from './api'
 import { addMinutes, type Interval, lotToday, quarterHours, STEP_MINUTES, toLotInstant } from './interval'
 import { IntervalPicker } from './IntervalPicker'
+import { SignedOutError, SPACE_TAKEN, SpaceTakenError, useCreateReservation } from '../reservations/api'
+import { BookingPanel } from '../reservations/BookingPanel'
+import { BookingSuccess } from '../reservations/BookingSuccess'
+
+type FreeSpace = Availability['freeSpaces'][number]
 
 export function LotAvailabilityPage() {
   const { id = '' } = useParams()
@@ -41,18 +46,48 @@ function AvailabilityView({ lot }: { lot: Lot }) {
   const [value, setValue] = useState<Interval>(() => defaultInterval(lot))
   const [submitted, setSubmitted] = useState<{ start: string; end: string } | null>(null)
   const availability = useAvailability(lot.id, submitted)
+  const [space, setSpace] = useState<FreeSpace | null>(null)
+  const booking = useCreateReservation(lot.id)
+  const navigate = useNavigate()
+  const location = useLocation()
 
   const errors = availability.error instanceof AvailabilityError ? availability.error.errors : undefined
 
   function submit(event: FormEvent) {
     event.preventDefault()
     setSubmitted({ start: toLotInstant(value.date, value.start), end: toLotInstant(value.date, value.end) })
+    choose(null)
+  }
+
+  function choose(next: FreeSpace | null) {
+    booking.reset()
+    setSpace(next)
+  }
+
+  function book(plate: string) {
+    if (!space || !submitted) {
+      return
+    }
+    booking.mutate(
+      { spaceId: space.id, ...submitted, plate },
+      {
+        onError: (error) => {
+          if (error instanceof SpaceTakenError) {
+            // The hook has already refreshed the free spaces; this one is gone.
+            setSpace(null)
+          } else if (error instanceof SignedOutError) {
+            void navigate('/login', { state: { from: location } })
+          }
+        },
+      },
+    )
   }
 
   function change(next: Interval) {
     setValue(next)
     // The old answer belongs to the old interval.
     setSubmitted(null)
+    choose(null)
   }
 
   return (
@@ -78,14 +113,36 @@ function AvailabilityView({ lot }: { lot: Lot }) {
 
       {availability.isFetching && <p role="status">Checking availability…</p>}
       {availability.isError && !errors && <p role="alert">{UNEXPECTED_ERROR}</p>}
-      {availability.data && !availability.isFetching && <AvailabilityResult availability={availability.data} />}
+      {booking.error instanceof SpaceTakenError && <p role="alert">{SPACE_TAKEN}</p>}
+      {availability.data && !availability.isFetching && (
+        <AvailabilityResult availability={availability.data} onBook={choose} />
+      )}
+
+      {booking.data ? (
+        <BookingSuccess reservation={booking.data} />
+      ) : (
+        space &&
+        submitted && (
+          <BookingPanel
+            key={space.id}
+            lotName={lot.name}
+            spaceLabel={space.label}
+            interval={submitted}
+            pending={booking.isPending}
+            error={booking.error}
+            onConfirm={book}
+            onDismissError={() => booking.reset()}
+            onCancel={() => choose(null)}
+          />
+        )
+      )}
 
       <Link to="/lots">Back to all lots</Link>
     </section>
   )
 }
 
-function AvailabilityResult({ availability }: { availability: Availability }) {
+function AvailabilityResult({ availability, onBook }: { availability: Availability; onBook: (space: FreeSpace) => void }) {
   if (availability.freeSpaces.length === 0) {
     return <p>No free spaces for this interval. Try another time.</p>
   }
@@ -97,7 +154,12 @@ function AvailabilityResult({ availability }: { availability: Availability }) {
       </p>
       <ul>
         {availability.freeSpaces.map((space) => (
-          <li key={space.id}>{space.label}</li>
+          <li key={space.id}>
+            <span>{space.label}</span>{' '}
+            <button type="button" aria-label={`Book space ${space.label}`} onClick={() => onBook(space)}>
+              Book
+            </button>
+          </li>
         ))}
       </ul>
     </section>
