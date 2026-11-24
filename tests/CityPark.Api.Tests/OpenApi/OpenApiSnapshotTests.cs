@@ -30,8 +30,10 @@ public class OpenApiSnapshotTests(OpenApiContractFactory factory) : IClassFixtur
             $"The OpenAPI document differs from {path}. Run the tests with {UpdateVariable}=1, then npm run generate in web/.");
     }
 
-    // Git may check the file out with CRLF on Windows.
-    private static string Normalize(string json) => json.ReplaceLineEndings("\n").TrimEnd() + "\n";
+    // Git checks files out with CRLF on Windows: the snapshot itself, and the C# sources whose
+    // multi-line XML comments become descriptions with an escaped \r\n inside the JSON strings.
+    private static string Normalize(string json) =>
+        json.ReplaceLineEndings("\n").Replace(@"\r\n", @"\n", StringComparison.Ordinal).TrimEnd() + "\n";
 
     private static string SnapshotPath()
     {
