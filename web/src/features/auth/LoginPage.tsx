@@ -10,6 +10,9 @@ export function LoginPage() {
   return (
     <section>
       <h2>Sign in</h2>
+      {(location.state as { registered?: boolean } | null)?.registered && (
+        <p role="status">Account created. Sign in to continue.</p>
+      )}
       <CredentialsForm
         submitLabel="Sign in"
         passwordAutoComplete="current-password"
