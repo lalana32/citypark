@@ -5,6 +5,7 @@ import { RequireAuth } from './features/auth/RequireAuth'
 import { UserMenu } from './features/auth/UserMenu'
 import { LotAvailabilityPage } from './features/lots/LotAvailabilityPage'
 import { LotsPage } from './features/lots/LotsPage'
+import { MyReservationsPage } from './features/reservations/MyReservationsPage'
 
 function Layout() {
   return (
@@ -13,6 +14,7 @@ function Layout() {
         <h1>CityPark</h1>
         <nav>
           <Link to="/lots">Parking lots</Link>
+          <Link to="/reservations">My reservations</Link>
         </nav>
         <UserMenu />
       </header>
@@ -33,6 +35,7 @@ function App() {
         <Route path="/lots/:id" element={<LotAvailabilityPage />} />
         <Route element={<RequireAuth />}>
           <Route index element={<p>Parking reservations.</p>} />
+          <Route path="/reservations" element={<MyReservationsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
