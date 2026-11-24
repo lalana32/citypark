@@ -71,7 +71,8 @@ async function bookA02(plate = 'A12K345') {
 
 function calls(fetchMock: ReturnType<typeof stubApi>, route: string) {
   return fetchMock.mock.calls
-    .map(([input]) => input as Request)
+    // The CSRF call passes a URL, every API call a Request.
+    .map(([input]) => (input instanceof Request ? input : new Request(input)))
     .filter((request) => `${request.method} ${new URL(request.url).pathname}` === route)
 }
 
