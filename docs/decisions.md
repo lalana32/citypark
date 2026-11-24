@@ -11,6 +11,7 @@ Each entry has a decision, the rationale, the evidence it is based on and a fall
 | D1 | snake_case naming in EF Core | `EFCore.NamingConventions` 10.0.x with EF Core 10 | 2026-11-15 |
 | D2 | xUnit v3 runner mode on the .NET 10 SDK | Microsoft.Testing.Platform (MTP) | 2026-11-15 |
 | D3 | Board and repository visibility | Public repository, private board until the project is finished | 2026-11-15 |
+| D4 | TypeScript version of the frontend | TypeScript 5.9, not 6.0 | 2026-11-24 |
 
 ## D1: snake_case naming in EF Core
 
@@ -102,3 +103,21 @@ reviewers as collaborators. On a free account this removes branch protection and
 pull request workflow then depends on discipline instead of enforced rules. If the board is
 shared at the end, review it first for the items listed above, or export the relevant cards into
 `docs/` instead.
+
+## D4: TypeScript version of the frontend
+
+**Decision.** `web/` uses TypeScript `~5.9.3`, although `create-vite` scaffolds the app with
+TypeScript 6.0.
+
+**Rationale.** The API types are generated with `openapi-typescript`, which declares
+`typescript ^5.x` as a peer dependency, so `npm install` refuses it next to TypeScript 6. Moving
+down one version keeps the dependency tree valid without `--legacy-peer-deps`, which would hide
+every other peer conflict as well. The project uses no TypeScript 6 feature; `strict` is set
+explicitly in both tsconfig files, because TypeScript 5 does not turn it on by default.
+
+**Evidence.** On 2026-11-24 `npm view openapi-typescript` showed 7.13.0 as `latest` (and
+7.0.0-rc.1 as `next`), both with the peer range `^5.x`. `typescript-eslint` 8.72 accepts
+`>=4.8.4 <6.1.0`, so it works with 5.9. Typecheck, lint, tests and build pass on 5.9.3.
+
+**Fallback.** When `openapi-typescript` releases support for TypeScript 6, remove the Dependabot
+ignore rule for `typescript` major updates and upgrade.

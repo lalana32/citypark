@@ -26,6 +26,7 @@ Every project under `src/` has a matching test project under `tests/`.
 
 - .NET SDK 10.0.404 or a later 10.0.4xx patch (pinned in `global.json`)
 - Docker with Compose v2 (for the local database)
+- Node.js 22 (pinned in `web/.nvmrc`) for the [frontend](#frontend)
 
 ## Build
 
@@ -40,6 +41,50 @@ Warnings are treated as errors (see `Directory.Build.props`), so the build must 
 ```bash
 dotnet test
 ```
+
+## Frontend
+
+A minimal React app in `web/` (Vite, TypeScript strict, TanStack Query, react-hook-form). Run
+the commands from `web/`:
+
+| Command | What it does |
+| --- | --- |
+| `npm ci` | Installs the exact versions from `package-lock.json` |
+| `npm run dev` | Starts the dev server on `http://localhost:5173`; `/api` is proxied to the API on `http://localhost:5114` |
+| `npm run generate` | Generates `src/api/schema.d.ts` from `openapi/v1.json` |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | `tsc -b`, type errors only, no output |
+| `npm test` | Vitest component tests in jsdom |
+| `npm run build` | Type-checks and builds into `dist/` |
+
+For `npm run dev`, start the API with `dotnet run --project src/CityPark.Api --launch-profile http`.
+The browser talks only to the dev server, so the session and antiforgery cookies are same-origin
+and CORS stays off ([docs/auth.md](docs/auth.md#cors)).
+
+### API types
+
+The types come from a committed copy of the OpenAPI document, `web/openapi/v1.json`. CI fails
+when either step is out of date:
+
+1. `OpenApiSnapshotTests` (in `dotnet test`) compares the API's `/openapi/v1.json` with the file.
+2. The Frontend job runs `npm run generate` and fails if `src/api/schema.d.ts` changes.
+
+After changing an endpoint, update both, from the repository root:
+
+```bash
+UPDATE_OPENAPI_SNAPSHOT=1 dotnet test --project tests/CityPark.Api.Tests/CityPark.Api.Tests.csproj
+cd web && npm run generate
+```
+
+In PowerShell, set the variable with `$env:UPDATE_OPENAPI_SNAPSHOT = "1"` first and remove it
+afterwards.
+
+### API client
+
+`src/api/client.ts` is a typed client (`openapi-fetch`). Its fetch wrapper (`src/api/http.ts`)
+gets a token from `GET /api/v1/auth/csrf` before every `POST`, `PUT`, `PATCH` and `DELETE` and
+sends it in the `X-XSRF-TOKEN` header. The token is fetched for each request and never stored,
+neither in `localStorage` nor in `sessionStorage`.
 
 ## Local database
 
