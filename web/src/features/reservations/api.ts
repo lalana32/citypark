@@ -41,6 +41,58 @@ export function canCancel(reservation: Pick<Reservation, 'state' | 'start'>, now
   return reservation.state === 'Upcoming' && remaining >= CANCEL_CUTOFF_MINUTES * 60_000
 }
 
+export const ALREADY_CANCELLED = 'This reservation is already cancelled.'
+export const RESERVATION_NOT_FOUND = 'This reservation no longer exists.'
+
+/** The server refused the cancel; the message is safe to show as it is. */
+export class CancelRejectedError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'CancelRejectedError'
+  }
+}
+
+export function useCancelReservation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (id: string): Promise<void> => {
+      const { error, response } = await api.POST('/api/v1/reservations/{id}/cancel', { params: { path: { id } } })
+      if (response.ok) {
+        return
+      }
+      if (response.status === 401) {
+        throw new SignedOutError()
+      }
+      throw new CancelRejectedError(cancelErrorMessage(response.status, error as Problem | undefined))
+    },
+    // Even a rejection means our copy is out of date, e.g. the reservation has started meanwhile.
+    onSettled: async (_data, error) => {
+      if (error instanceof SignedOutError) {
+        queryClient.setQueryData(sessionKey, null)
+        return
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: reservationsKey }),
+        queryClient.invalidateQueries({ queryKey: lotsKey }),
+      ])
+    },
+  })
+}
+
+export function cancelErrorMessage(status: number, problem: Problem | undefined): string {
+  switch (status) {
+    case 404:
+      return RESERVATION_NOT_FOUND
+    case 409:
+      return ALREADY_CANCELLED
+    case 422:
+      return problem?.errors?.general?.[0] ?? problem?.detail ?? UNEXPECTED_ERROR
+    default:
+      return UNEXPECTED_ERROR
+  }
+}
+
 export const SPACE_TAKEN = 'Someone has just booked this space. The free spaces are refreshed, so please pick another one.'
 export const UNEXPECTED_ERROR = 'Something went wrong. Please try again.'
 
@@ -94,7 +146,8 @@ export function useCreateReservation(lotId: string) {
       }
     },
     // Either way the free spaces have changed: we took one, or someone else did.
-    onSuccess: refreshAvailability,
+    onSuccess: () =>
+      Promise.all([refreshAvailability(), queryClient.invalidateQueries({ queryKey: reservationsKey })]),
     onError: async (error) => {
       if (error instanceof SpaceTakenError) {
         await refreshAvailability()
