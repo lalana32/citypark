@@ -11,6 +11,10 @@ const CREDENTIAL_FIELDS: readonly CredentialField[] = ['email', 'password']
 
 export const sessionKey = ['session'] as const
 
+export function hasRole(user: CurrentUser | null | undefined, role: string) {
+  return user?.roles.includes(role) ?? false
+}
+
 export class AuthFormError extends Error {
   readonly errors: FormErrors<CredentialField>
 
