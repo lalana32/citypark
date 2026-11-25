@@ -6,13 +6,12 @@ export function LoginPage() {
   const login = useLogin()
   const navigate = useNavigate()
   const location = useLocation()
+  const notice = loginNotice(location.state)
 
   return (
     <section>
       <h2>Sign in</h2>
-      {(location.state as { registered?: boolean } | null)?.registered && (
-        <p role="status">Account created. Sign in to continue.</p>
-      )}
+      {notice && <p role="status">{notice}</p>}
       <CredentialsForm
         submitLabel="Sign in"
         passwordAutoComplete="current-password"
@@ -26,6 +25,16 @@ export function LoginPage() {
       </p>
     </section>
   )
+}
+
+export const SESSION_ENDED = 'Your session has ended. Sign in again to continue.'
+
+function loginNotice(state: unknown): string | null {
+  const flags = state as { registered?: boolean; sessionEnded?: boolean } | null
+  if (flags?.registered) {
+    return 'Account created. Sign in to continue.'
+  }
+  return flags?.sessionEnded ? SESSION_ENDED : null
 }
 
 // RequireAuth stores where the user was heading; only accept an in-app path.
