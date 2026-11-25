@@ -6,7 +6,7 @@ import { LoginPage, SESSION_ENDED } from '../auth/LoginPage'
 import { RegisterPage } from '../auth/RegisterPage'
 import { SPACE_TAKEN } from '../reservations/api'
 import { ANA, CENTAR, createTestQueryClient, csrfRoute, type Handler, problem, type Route as ApiRoute, stubApi } from '../../test/apiStub'
-import { LotAvailabilityPage } from './LotAvailabilityPage'
+import { LotAvailabilityPage, SPACE_GONE } from './LotAvailabilityPage'
 
 afterEach(() => {
   cleanup()
@@ -220,6 +220,27 @@ describe('coming back after signing in', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Space A-02' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Reserve' }))
   }
+
+  it('says the space is no longer free after login and lets the user pick again', async () => {
+    // A02 is free while the guest picks it and taken by the time they are back.
+    stubApi({
+      ...routes(() => problem(500), [[A02, A03], [A03]], () => problem(401)),
+      'POST /api/v1/auth/login': () => Response.json(ANA),
+    })
+    renderPage()
+
+    await reserveA02()
+    fireEvent.click(screen.getByRole('link', { name: 'Log in' }))
+    fillCredentials()
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign in' }))
+
+    expect((await screen.findByRole('alert')).textContent).toBe(SPACE_GONE)
+    expect(screen.queryByRole('button', { name: 'Space A-02' })).toBeNull()
+    expect(screen.queryByLabelText('License plate')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Space A-03' }))
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByLabelText('License plate')).toBeDefined()
+  })
 
   async function expectBackOnA02() {
     expect(await screen.findByRole('heading', { name: 'Centar' })).toBeDefined()
