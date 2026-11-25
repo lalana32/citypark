@@ -1,6 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CENTAR, createTestQueryClient, problem, type Route as ApiRoute, stubApi } from '../../test/apiStub'
 import { LOT_NOT_FOUND, UNEXPECTED_ERROR } from './api'
@@ -60,16 +60,33 @@ const TWO_SPACES = [
   { id: '019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e03', label: 'A-03' },
 ]
 
-function renderPage() {
+function CurrentUrl() {
+  const { pathname, search } = useLocation()
+  return <output data-testid="url">{pathname + search}</output>
+}
+
+function renderPage(path = `/lots/${CENTAR.id}`) {
   render(
     <QueryClientProvider client={createTestQueryClient()}>
-      <MemoryRouter initialEntries={[`/lots/${CENTAR.id}`]}>
+      <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/lots/:id" element={<LotAvailabilityPage />} />
+          <Route
+            path="/lots/:id"
+            element={
+              <>
+                <LotAvailabilityPage />
+                <CurrentUrl />
+              </>
+            }
+          />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   )
+}
+
+function currentUrl(): string {
+  return screen.getByTestId('url').textContent ?? ''
 }
 
 async function check() {
@@ -125,8 +142,38 @@ describe('LotAvailabilityPage', () => {
     fireEvent.change(screen.getByLabelText('To'), { target: { value: '09:00' } })
 
     expect(screen.queryByRole('button', { name: 'Space A-02' })).toBeNull()
+    expect(currentUrl()).toBe(`/lots/${CENTAR.id}`)
     await check()
     expect((await screen.findByRole('button', { name: 'Space A-02' })).getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('keeps the checked time and the chosen space after a reload', async () => {
+    stubApi(routes(() => availability(TWO_SPACES), quoteOf(5, 2)))
+    renderPage()
+
+    fireEvent.change(await screen.findByLabelText('From'), { target: { value: '10:00' } })
+    fireEvent.change(screen.getByLabelText('To'), { target: { value: '12:00' } })
+    await check()
+    fireEvent.click(await screen.findByRole('button', { name: 'Space A-03' }))
+    const url = currentUrl()
+    expect(url).toContain(`space=${TWO_SPACES[1].id}`)
+
+    cleanup()
+    renderPage(url)
+
+    expect((await screen.findByRole('button', { name: 'Space A-03' })).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByLabelText<HTMLSelectElement>('From').value).toBe('10:00')
+    expect(summaryRow('Space')).toBe('A-03')
+    expect(summaryRow('Departure')).toBe('12:00')
+  })
+
+  it('falls back to the default time when the URL holds an invalid one', async () => {
+    stubApi(routes(() => availability(TWO_SPACES)))
+    renderPage(`/lots/${CENTAR.id}?date=2026-12-01&start=10:10&end=11:00&space=${TWO_SPACES[0].id}`)
+
+    expect(await screen.findByText('Pick a time and check availability, then choose a free space.')).toBeDefined()
+    expect(screen.getByLabelText<HTMLSelectElement>('From').value).toBe('07:00')
+    expect(screen.queryByRole('button', { name: 'Space A-02' })).toBeNull()
   })
 
   it('shows a 422 field error next to its field', async () => {
