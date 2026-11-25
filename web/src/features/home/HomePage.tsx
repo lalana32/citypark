@@ -3,16 +3,21 @@ import { Link } from 'react-router'
 import { AnimatedCityMap } from './cityMap/AnimatedCityMap'
 import { DEMO_LOTS } from './demoLots'
 import { LocationsSection } from './LocationsSection'
+import { defaultSlot } from './slot'
+import { SpaceSelection } from './SpaceSelection'
 import './home.css'
 
 /** Public landing page: the hero with the animated city map, then the browsing sections. */
 export function HomePage() {
-  const [, setLotId] = useState(DEMO_LOTS[0].id)
+  const [lotId, setLotId] = useState(DEMO_LOTS[0].id)
+  const [slot] = useState(() => defaultSlot(new Date()))
+  const lot = DEMO_LOTS.find((item) => item.id === lotId) ?? DEMO_LOTS[0]
 
   return (
     <>
       <Hero />
       <LocationsSection onViewLot={setLotId} />
+      <SpaceSelection key={lot.id} lot={lot} slot={slot} />
     </>
   )
 }
