@@ -1,4 +1,4 @@
-import { type DemoLot, freeSpaces, SPACE_NUMBERS } from './demoLots'
+import { type DemoLot, freeSpaces, SPACE_NUMBERS, spaceLabel } from './demoLots'
 
 const VIEW_W = 1400
 const VIEW_H = 960
@@ -15,8 +15,6 @@ function spaceBox(index: number) {
   const top = index < 6
   return { x: 114 + 200 * (index % 6), y: top ? 184 : 624, top }
 }
-
-export const spaceLabel = (lot: DemoLot, space: string) => `${lot.level}-${space}`
 
 /** 12-space plan: the SVG draws the lot, real buttons on top of it make the spaces selectable. */
 export function ParkingPlan({ lot, selected, onSelect }: Props) {

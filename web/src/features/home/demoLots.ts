@@ -42,4 +42,6 @@ export const totalSpaces = () => SPACE_NUMBERS.length
 
 export const freeSpaces = (lot: DemoLot) => SPACE_NUMBERS.length - lot.occupied.length
 
+export const spaceLabel = (lot: DemoLot, space: string) => `${lot.level}-${space}`
+
 export const formatKm = (amount: number) => `${amount.toFixed(2)} KM`
