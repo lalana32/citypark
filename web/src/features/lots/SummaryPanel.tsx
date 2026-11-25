@@ -6,6 +6,7 @@ import { formatDate, formatDuration, type Interval } from './interval'
 export const QUOTE_FAILED = 'We could not load the price. Please try again.'
 
 type Props = {
+  lotName: string
   /** The interval the free spaces were checked for; null before the first check. */
   checked: Interval | null
   spaceLabel: string | null
@@ -13,7 +14,7 @@ type Props = {
   children?: ReactNode
 }
 
-export function SummaryPanel({ checked, spaceLabel, quote, children }: Props) {
+export function SummaryPanel({ lotName, checked, spaceLabel, quote, children }: Props) {
   return (
     <aside className="site-card lot-summary" aria-labelledby="lot-summary-title">
       <h2 id="lot-summary-title" className="lot-summary-title">
@@ -22,6 +23,7 @@ export function SummaryPanel({ checked, spaceLabel, quote, children }: Props) {
 
       {checked ? (
         <dl className="lot-summary-list">
+          <Row term="Lot">{lotName}</Row>
           <Row term="Space">{spaceLabel ?? 'Not chosen yet'}</Row>
           <Row term="Date">{formatDate(checked.date)}</Row>
           <Row term="Arrival">{checked.start}</Row>
