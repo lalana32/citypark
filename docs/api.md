@@ -67,6 +67,8 @@ Public: no sign-in needed. Added in CP-023.
 - **`start` and `end`** are required ISO 8601 instants **with an offset**: `2026-12-01T09:00:00Z` or `2026-12-01T10:00:00%2B01:00`. In a query string `+` means a space, so it must be sent as `%2B`. The instants are converted to UTC before any rule is checked ([ADR-004](adr/0004-utc-storage-and-sarajevo-business-day.md)).
 - The interval must pass the same booking rules as a reservation (R1 grid, R2 minimum duration, opening hours, R4 horizon, R5 start in the past), so a free space in the answer can actually be booked.
 - The response echoes `start` and `end` with the Europe/Sarajevo offset.
+- **`freeSpaces`** lists the free spaces only, in label order.
+- **`spaces`** lists every active space of the lot in label order, each with `isFree` for the checked interval, so a client can draw the whole lot with its occupied spaces. Inactive spaces are left out of both lists. Added in CP-048.
 
 | Case | Status | `errors` key |
 |---|---|---|
@@ -85,9 +87,16 @@ Public: no sign-in needed. Added in CP-023.
   "freeSpaces": [
     { "id": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e02", "label": "A-02" },
     { "id": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e17", "label": "A-17" }
+  ],
+  "spaces": [
+    { "id": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e01", "label": "A-01", "isFree": false },
+    { "id": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e02", "label": "A-02", "isFree": true },
+    { "id": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e03", "label": "A-03", "isFree": false }
   ]
 }
 ```
+
+The example shows three of the 30 entries of `spaces`.
 
 **Known limit:** a value without an offset (`2026-12-01T10:00:00`) is parsed in the server's time zone by ASP.NET Core binding, so clients must always send one.
 
