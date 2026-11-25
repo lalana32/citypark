@@ -50,8 +50,8 @@ function renderPage() {
   )
 }
 
-async function rowOf(spaceLabel: string) {
-  return (await screen.findByText(spaceLabel)).closest('tr')!
+async function cardOf(spaceLabel: string) {
+  return (await screen.findByText(spaceLabel)).closest('article')!
 }
 
 function calls(fetchMock: ReturnType<typeof stubApi>, route: string) {
@@ -61,7 +61,21 @@ function calls(fetchMock: ReturnType<typeof stubApi>, route: string) {
 }
 
 describe('my reservations', () => {
-  it('shows each reservation in lot time with its state and offers the cancel only when allowed', async () => {
+  it('shows each reservation as a card with its details in lot time', async () => {
+    stubApi(routes(() => Response.json(page([reservation()]))))
+    renderPage()
+
+    const card = await cardOf('A-02')
+    expect(within(card).getByRole('heading', { name: 'Centar' })).toBeDefined()
+    expect(within(card).getByText('1 Dec 2099')).toBeDefined()
+    expect(within(card).getByText('10:00–11:30')).toBeDefined()
+    expect(within(card).getByText('A12K345')).toBeDefined()
+    expect(within(card).getByText('5.00 BAM')).toBeDefined()
+    expect(within(card).getByText('Upcoming')).toBeDefined()
+    expect(screen.getByRole('heading', { level: 1, name: 'My reservations' })).toBeDefined()
+  })
+
+  it('offers the cancel only when allowed', async () => {
     const soon = new Date(Date.now() + 10 * 60_000).toISOString()
     stubApi(
       routes(() =>
@@ -76,12 +90,9 @@ describe('my reservations', () => {
     )
     renderPage()
 
-    const upcoming = await rowOf('A-02')
-    expect(within(upcoming).getByText('1 Dec 2099, 10:00')).toBeDefined()
-    expect(within(upcoming).getByText('Upcoming')).toBeDefined()
-    expect(within(upcoming).getByRole('button', { name: 'Cancel' })).toBeDefined()
-    expect(within(await rowOf('B-01')).queryByRole('button', { name: 'Cancel' })).toBeNull()
-    expect(within(await rowOf('C-03')).queryByRole('button', { name: 'Cancel' })).toBeNull()
+    expect(within(await cardOf('A-02')).getByRole('button', { name: 'Cancel' })).toBeDefined()
+    expect(within(await cardOf('B-01')).queryByRole('button', { name: 'Cancel' })).toBeNull()
+    expect(within(await cardOf('C-03')).queryByRole('button', { name: 'Cancel' })).toBeNull()
   })
 
   it('cancels after the confirmation and updates the badge without a reload', async () => {
@@ -97,13 +108,13 @@ describe('my reservations', () => {
     )
     renderPage()
 
-    fireEvent.click(within(await rowOf('A-02')).getByRole('button', { name: 'Cancel' }))
+    fireEvent.click(within(await cardOf('A-02')).getByRole('button', { name: 'Cancel' }))
     expect(calls(fetchMock, CANCEL)).toHaveLength(0)
     fireEvent.click(screen.getByRole('button', { name: 'Yes, cancel' }))
 
-    const row = await rowOf('A-02')
-    await waitFor(() => expect(within(row).getByText('Cancelled')).toBeDefined())
-    expect(within(row).queryByRole('button', { name: 'Cancel' })).toBeNull()
+    const card = await cardOf('A-02')
+    await waitFor(() => expect(within(card).getByText('Cancelled')).toBeDefined())
+    expect(within(card).queryByRole('button', { name: 'Cancel' })).toBeNull()
     expect(calls(fetchMock, CANCEL)).toHaveLength(1)
     expect(calls(fetchMock, LIST)).toHaveLength(2)
   })
@@ -112,7 +123,7 @@ describe('my reservations', () => {
     const fetchMock = stubApi(routes(() => Response.json(page([reservation()]))))
     renderPage()
 
-    fireEvent.click(within(await rowOf('A-02')).getByRole('button', { name: 'Cancel' }))
+    fireEvent.click(within(await cardOf('A-02')).getByRole('button', { name: 'Cancel' }))
     fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
 
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeDefined()
@@ -133,7 +144,7 @@ describe('my reservations', () => {
     )
     renderPage()
 
-    fireEvent.click(within(await rowOf('A-02')).getByRole('button', { name: 'Cancel' }))
+    fireEvent.click(within(await cardOf('A-02')).getByRole('button', { name: 'Cancel' }))
     fireEvent.click(screen.getByRole('button', { name: 'Yes, cancel' }))
 
     expect((await screen.findByRole('alert')).textContent).toBe(message)
@@ -145,7 +156,7 @@ describe('my reservations', () => {
     stubApi(routes(() => Response.json(page([reservation()])), () => problem(401)))
     renderPage()
 
-    fireEvent.click(within(await rowOf('A-02')).getByRole('button', { name: 'Cancel' }))
+    fireEvent.click(within(await cardOf('A-02')).getByRole('button', { name: 'Cancel' }))
     fireEvent.click(screen.getByRole('button', { name: 'Yes, cancel' }))
 
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeDefined()

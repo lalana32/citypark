@@ -64,6 +64,16 @@ export function formatLotDateTime(instant: string): string {
   return `${lotDate.format(date)}, ${lotTime.format(date)}`
 }
 
+/** Any ISO instant -> "1 Dec 2026" on the lot calendar. */
+export function formatLotDay(instant: string): string {
+  return lotDate.format(new Date(instant))
+}
+
+/** Two ISO instants -> "10:00–11:30" on the lot clock. */
+export function formatLotTimes(start: string, end: string): string {
+  return `${lotTime.format(new Date(start))}–${lotTime.format(new Date(end))}`
+}
+
 /** Today's date on the lot, as "YYYY-MM-DD". */
 export function lotToday(now = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: LOT_TIME_ZONE }).format(now)

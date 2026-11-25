@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { Pager } from '../../components/Pager'
-import { formatLotDateTime } from '../lots/interval'
-import { canCancel, formatPrice, type Reservation, useCancelReservation, useMyReservations } from './api'
-import { CancelAction, StateBadge } from './ReservationParts'
+import { canCancel, type Reservation, useCancelReservation, useMyReservations } from './api'
+import { ReservationCard } from './ReservationCard'
+import { CancelAction } from './ReservationParts'
+import './reservations.css'
 
 export function MyReservationsPage() {
   const [page, setPage] = useState(1)
@@ -11,53 +12,37 @@ export function MyReservationsPage() {
   const now = useNow()
 
   return (
-    <section>
-      <h2>My reservations</h2>
-      {reservations.isPending && <p role="status">Loading reservations…</p>}
-      {reservations.isError && <p role="alert">We could not load your reservations. Please try again.</p>}
-      {reservations.data && reservations.data.items.length === 0 && (
-        <p>
-          You have no reservations yet. <Link to="/lots">Find a parking lot</Link>
-        </p>
-      )}
-      {reservations.data && reservations.data.items.length > 0 && (
-        <>
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Lot</th>
-                <th scope="col">Space</th>
-                <th scope="col">From</th>
-                <th scope="col">To</th>
-                <th scope="col">Plate</th>
-                <th scope="col">Price</th>
-                <th scope="col">State</th>
-                <th scope="col">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+    <section className="res-page">
+      <div className="site-wrap">
+        <header className="res-header">
+          <p className="site-eyebrow">Your bookings</p>
+          <h1 className="site-h2 site-display">My reservations</h1>
+          <p className="site-sub">Times are local time in Sarajevo.</p>
+        </header>
+
+        {reservations.isPending && <p role="status">Loading reservations…</p>}
+        {reservations.isError && <p role="alert">We could not load your reservations. Please try again.</p>}
+        {reservations.data && reservations.data.items.length === 0 && (
+          <p>
+            You have no reservations yet. <Link to="/lots">Find a parking lot</Link>
+          </p>
+        )}
+        {reservations.data && reservations.data.items.length > 0 && (
+          <>
+            <ul className="res-list">
               {reservations.data.items.map((reservation) => (
-                <tr key={reservation.id}>
-                  <td>{reservation.lotName}</td>
-                  <td>{reservation.spaceLabel}</td>
-                  <td>{formatLotDateTime(reservation.start)}</td>
-                  <td>{formatLotDateTime(reservation.end)}</td>
-                  <td>{reservation.plate}</td>
-                  <td>{formatPrice(reservation)}</td>
-                  <td>
-                    <StateBadge state={reservation.state} />
-                  </td>
-                  <td>
-                    <MyCancel reservation={reservation} cancellable={canCancel(reservation, now)} />
-                  </td>
-                </tr>
+                <li key={reservation.id}>
+                  <ReservationCard
+                    reservation={reservation}
+                    actions={<MyCancel reservation={reservation} cancellable={canCancel(reservation, now)} />}
+                  />
+                </li>
               ))}
-            </tbody>
-          </table>
-          <p>Times are local time in Sarajevo.</p>
-          <Pager page={page} totalPages={Number(reservations.data.totalPages ?? 1)} onChange={setPage} />
-        </>
-      )}
+            </ul>
+            <Pager page={page} totalPages={Number(reservations.data.totalPages ?? 1)} onChange={setPage} />
+          </>
+        )}
+      </div>
     </section>
   )
 }
