@@ -48,6 +48,27 @@ describe('session', () => {
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeDefined()
     expect(screen.queryByText(ANA.email)).toBeNull()
   })
+
+  it('logs out from a page other than home', async () => {
+    stubApi({ ...csrfRoute, ...signedIn, 'POST /api/v1/auth/logout': () => new Response(null, { status: 204 }) })
+    renderApp('/lots')
+
+    fireEvent.click(await screen.findByRole('button', { name: 'My account' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Log out' }))
+
+    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeDefined()
+  })
+})
+
+describe('site frame', () => {
+  it('shows the site navigation and footer instead of the old header', () => {
+    stubApi(signedOut)
+    renderApp('/login')
+
+    expect(screen.getByRole('navigation', { name: 'Main' })).toBeDefined()
+    expect(screen.getByRole('contentinfo')).toBeDefined()
+    expect(screen.queryByRole('heading', { name: 'CityPark' })).toBeNull()
+  })
 })
 
 describe('registration', () => {
