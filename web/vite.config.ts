@@ -17,5 +17,8 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // jsdom can take many seconds per file on a slow machine; these are upper bounds, not delays.
+    testTimeout: 30_000,
+    setupFiles: ['./src/test/setup.ts'],
   },
 })
