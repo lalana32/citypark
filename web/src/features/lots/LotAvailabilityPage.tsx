@@ -1,7 +1,6 @@
 import { type FormEvent, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import {
-  type Availability,
   AvailabilityError,
   type Lot,
   LotNotFoundError,
@@ -12,12 +11,11 @@ import {
 import { addMinutes, type Interval, lotToday, quarterHours, STEP_MINUTES, toLotInstant } from './interval'
 import { IntervalPicker } from './IntervalPicker'
 import { BACK_TO_LOTS, LotHeader } from './LotHeader'
+import { type FreeSpace, SpaceGrid } from './SpaceGrid'
 import './lot.css'
 import { SignedOutError, SPACE_TAKEN, SpaceTakenError, useCreateReservation } from '../reservations/api'
 import { BookingPanel } from '../reservations/BookingPanel'
 import { BookingSuccess } from '../reservations/BookingSuccess'
-
-type FreeSpace = Availability['freeSpaces'][number]
 
 export function LotAvailabilityPage() {
   const { id = '' } = useParams()
@@ -126,7 +124,7 @@ function AvailabilityView({ lot }: { lot: Lot }) {
       {availability.isError && !errors && <p role="alert">{UNEXPECTED_ERROR}</p>}
       {booking.error instanceof SpaceTakenError && <p role="alert">{SPACE_TAKEN}</p>}
       {availability.data && !availability.isFetching && (
-        <AvailabilityResult availability={availability.data} onBook={choose} />
+        <SpaceGrid availability={availability.data} selectedId={space?.id ?? null} onSelect={choose} />
       )}
 
       {booking.data ? (
@@ -148,30 +146,6 @@ function AvailabilityView({ lot }: { lot: Lot }) {
         )
       )}
     </>
-  )
-}
-
-function AvailabilityResult({ availability, onBook }: { availability: Availability; onBook: (space: FreeSpace) => void }) {
-  if (availability.freeSpaces.length === 0) {
-    return <p>No free spaces for this interval. Try another time.</p>
-  }
-
-  return (
-    <section aria-label="Availability">
-      <p>
-        {availability.availableSpaces} of {availability.totalSpaces} spaces free
-      </p>
-      <ul>
-        {availability.freeSpaces.map((space) => (
-          <li key={space.id}>
-            <span>{space.label}</span>{' '}
-            <button type="button" aria-label={`Book space ${space.label}`} onClick={() => onBook(space)}>
-              Book
-            </button>
-          </li>
-        ))}
-      </ul>
-    </section>
   )
 }
 

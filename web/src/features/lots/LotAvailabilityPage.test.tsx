@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CENTAR, createTestQueryClient, problem, type Route as ApiRoute, stubApi } from '../../test/apiStub'
 import { LOT_NOT_FOUND } from './api'
 import { LotAvailabilityPage } from './LotAvailabilityPage'
+import { NO_FREE_SPACES } from './SpaceGrid'
 
 afterEach(() => {
   cleanup()
@@ -32,6 +33,11 @@ function availability(freeSpaces: { id: string; label: string }[]) {
   })
 }
 
+const TWO_SPACES = [
+  { id: '019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e02', label: 'A-02' },
+  { id: '019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e03', label: 'A-03' },
+]
+
 function renderPage() {
   render(
     <QueryClientProvider client={createTestQueryClient()}>
@@ -58,7 +64,7 @@ describe('LotAvailabilityPage', () => {
     await check()
 
     expect(await screen.findByText('1 of 30 spaces free')).toBeDefined()
-    expect(screen.getByText('A-02')).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Space A-02' }).getAttribute('aria-pressed')).toBe('false')
     const request = fetchMock.mock.calls.at(-1)![0] as Request
     const query = new URL(request.url).searchParams
     expect(query.get('start')).toMatch(/T07:00:00\+0[12]:00$/)
@@ -71,7 +77,34 @@ describe('LotAvailabilityPage', () => {
 
     await check()
 
-    expect(await screen.findByText('No free spaces for this interval. Try another time.')).toBeDefined()
+    expect(await screen.findByText(NO_FREE_SPACES)).toBeDefined()
+    expect(screen.getByText('Try an earlier or later time, or another date.')).toBeDefined()
+    expect(screen.queryByRole('button', { name: /^Space / })).toBeNull()
+  })
+
+  it('highlights the chosen space and only that one', async () => {
+    stubApi(routes(() => availability(TWO_SPACES)))
+    renderPage()
+
+    await check()
+    fireEvent.click(await screen.findByRole('button', { name: 'Space A-02' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Space A-03' }))
+
+    expect(screen.getByRole('button', { name: 'Space A-02' }).getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByRole('button', { name: 'Space A-03' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('drops the spaces and the choice when the time changes', async () => {
+    stubApi(routes(() => availability(TWO_SPACES)))
+    renderPage()
+
+    await check()
+    fireEvent.click(await screen.findByRole('button', { name: 'Space A-02' }))
+    fireEvent.change(screen.getByLabelText('To'), { target: { value: '09:00' } })
+
+    expect(screen.queryByRole('button', { name: 'Space A-02' })).toBeNull()
+    await check()
+    expect((await screen.findByRole('button', { name: 'Space A-02' })).getAttribute('aria-pressed')).toBe('false')
   })
 
   it('shows a 422 field error next to its field', async () => {
