@@ -17,7 +17,8 @@ RUN dotnet restore src/CityPark.Api/CityPark.Api.csproj && dotnet tool restore
 COPY src/ src/
 RUN dotnet publish src/CityPark.Api/CityPark.Api.csproj -c Release --no-restore -o /out/api -p:UseAppHost=false
 # One executable that applies the pending migrations; it reads the connection string from CITYPARK_DB.
-RUN dotnet ef migrations bundle -c Release \
+# --configuration in full: in dotnet ef, -c is --context.
+RUN dotnet ef migrations bundle --configuration Release \
     --project src/CityPark.Infrastructure --startup-project src/CityPark.Infrastructure \
     -o /out/efbundle
 
