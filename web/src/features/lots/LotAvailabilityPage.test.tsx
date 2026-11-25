@@ -117,10 +117,22 @@ describe('LotAvailabilityPage', () => {
     expect(await screen.findByRole('heading', { name: 'Centar' })).toBeDefined()
   })
 
-  it('says when the lot does not exist', async () => {
+  it('shows the lot facts and links back to the lots section of the home page', async () => {
+    stubApi(routes())
+    renderPage()
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Centar' })).toBeDefined()
+    expect(screen.getByText('Ferhadija 1')).toBeDefined()
+    expect(screen.getByText('2.50 BAM / hour')).toBeDefined()
+    expect(screen.getByText('07:00–22:00')).toBeDefined()
+    expect(screen.getByRole('link', { name: '← Back to parking lots' }).getAttribute('href')).toBe('/#locations')
+  })
+
+  it('says when the lot does not exist and links back to the lots', async () => {
     stubApi({})
     renderPage()
 
     expect((await screen.findByRole('alert')).textContent).toBe(LOT_NOT_FOUND)
+    expect(screen.getByRole('link', { name: '← Back to parking lots' })).toBeDefined()
   })
 })

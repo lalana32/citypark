@@ -21,45 +21,54 @@ export function IntervalPicker({ opensAt, closesAt, value, onChange, errors = {}
   }
 
   return (
-    <fieldset>
-      <legend>Interval</legend>
+    <fieldset className="lot-interval">
+      <legend className="lot-legend">When do you need a space?</legend>
 
-      <label htmlFor="interval-date">Date</label>
-      <input
-        id="interval-date"
-        type="date"
-        required
-        value={value.date}
-        onChange={(event) => onChange({ ...value, date: event.target.value })}
-        {...errorProps('date', errors)}
-      />
-      <FieldError field="date" errors={errors} />
+      <div className="lot-field">
+        <label htmlFor="interval-date">Date</label>
+        <input
+          id="interval-date"
+          className="lot-input"
+          type="date"
+          required
+          value={value.date}
+          onChange={(event) => onChange({ ...value, date: event.target.value })}
+          {...errorProps('date', errors)}
+        />
+        <FieldError field="date" errors={errors} />
+      </div>
 
-      <label htmlFor="interval-start">From</label>
-      <select
-        id="interval-start"
-        value={value.start}
-        onChange={(event) => changeStart(event.target.value)}
-        {...errorProps('start', errors)}
-      >
-        {starts.map((time) => (
-          <option key={time}>{time}</option>
-        ))}
-      </select>
-      <FieldError field="start" errors={errors} />
+      <div className="lot-field">
+        <label htmlFor="interval-start">From</label>
+        <select
+          id="interval-start"
+          className="lot-input"
+          value={value.start}
+          onChange={(event) => changeStart(event.target.value)}
+          {...errorProps('start', errors)}
+        >
+          {starts.map((time) => (
+            <option key={time}>{time}</option>
+          ))}
+        </select>
+        <FieldError field="start" errors={errors} />
+      </div>
 
-      <label htmlFor="interval-end">To</label>
-      <select
-        id="interval-end"
-        value={value.end}
-        onChange={(event) => onChange({ ...value, end: event.target.value })}
-        {...errorProps('end', errors)}
-      >
-        {ends.map((time) => (
-          <option key={time}>{time}</option>
-        ))}
-      </select>
-      <FieldError field="end" errors={errors} />
+      <div className="lot-field">
+        <label htmlFor="interval-end">To</label>
+        <select
+          id="interval-end"
+          className="lot-input"
+          value={value.end}
+          onChange={(event) => onChange({ ...value, end: event.target.value })}
+          {...errorProps('end', errors)}
+        >
+          {ends.map((time) => (
+            <option key={time}>{time}</option>
+          ))}
+        </select>
+        <FieldError field="end" errors={errors} />
+      </div>
     </fieldset>
   )
 }
@@ -69,5 +78,9 @@ function errorProps(field: IntervalField, errors: Props['errors'] = {}) {
 }
 
 function FieldError({ field, errors }: { field: IntervalField; errors: NonNullable<Props['errors']> }) {
-  return errors[field] ? <p id={`interval-${field}-error`}>{errors[field]}</p> : null
+  return errors[field] ? (
+    <p id={`interval-${field}-error`} className="lot-field-error">
+      {errors[field]}
+    </p>
+  ) : null
 }

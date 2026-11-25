@@ -3,8 +3,6 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import {
   type Availability,
   AvailabilityError,
-  formatRate,
-  formatWindow,
   type Lot,
   LotNotFoundError,
   UNEXPECTED_ERROR,
@@ -13,6 +11,8 @@ import {
 } from './api'
 import { addMinutes, type Interval, lotToday, quarterHours, STEP_MINUTES, toLotInstant } from './interval'
 import { IntervalPicker } from './IntervalPicker'
+import { BACK_TO_LOTS, LotHeader } from './LotHeader'
+import './lot.css'
 import { SignedOutError, SPACE_TAKEN, SpaceTakenError, useCreateReservation } from '../reservations/api'
 import { BookingPanel } from '../reservations/BookingPanel'
 import { BookingSuccess } from '../reservations/BookingSuccess'
@@ -23,23 +23,31 @@ export function LotAvailabilityPage() {
   const { id = '' } = useParams()
   const lot = useLot(id)
 
-  if (lot.isPending) {
-    return <p role="status">Loading lot…</p>
-  }
-
-  if (lot.isError) {
-    return (
-      <section>
-        <p role="alert">
-          {lot.error instanceof LotNotFoundError ? lot.error.message : 'We could not load the parking lot. Please try again.'}
-        </p>
-        <Link to="/lots">Back to all lots</Link>
-      </section>
-    )
-  }
-
-  // Keyed, so a different lot starts with its own default interval.
-  return <AvailabilityView key={lot.data.id} lot={lot.data} />
+  return (
+    <section className="lot-page">
+      <div className="site-wrap">
+        {lot.isPending && (
+          <p role="status" className="lot-status">
+            Loading lot…
+          </p>
+        )}
+        {lot.isError && (
+          <>
+            <p role="alert" className="lot-alert">
+              {lot.error instanceof LotNotFoundError
+                ? lot.error.message
+                : 'We could not load the parking lot. Please try again.'}
+            </p>
+            <Link className="lot-back" to={BACK_TO_LOTS}>
+              ← Back to parking lots
+            </Link>
+          </>
+        )}
+        {/* Keyed, so a different lot starts with its own default interval. */}
+        {lot.data && <AvailabilityView key={lot.data.id} lot={lot.data} />}
+      </div>
+    </section>
+  )
 }
 
 function AvailabilityView({ lot }: { lot: Lot }) {
@@ -91,14 +99,15 @@ function AvailabilityView({ lot }: { lot: Lot }) {
   }
 
   return (
-    <section>
-      <h2>{lot.name}</h2>
-      <p>
-        {lot.address} · {formatRate(lot)} · Open {formatWindow(lot)}
-      </p>
+    <>
+      <LotHeader lot={lot} />
 
-      <form onSubmit={submit} noValidate>
-        {errors?.form && <p role="alert">{errors.form}</p>}
+      <form className="site-card lot-form" onSubmit={submit} noValidate>
+        {errors?.form && (
+          <p role="alert" className="lot-alert">
+            {errors.form}
+          </p>
+        )}
         <IntervalPicker
           opensAt={lot.opensAt}
           closesAt={lot.closesAt}
@@ -106,9 +115,11 @@ function AvailabilityView({ lot }: { lot: Lot }) {
           onChange={change}
           errors={errors?.fields}
         />
-        <button type="submit" disabled={availability.isFetching}>
-          Check availability
-        </button>
+        <div className="lot-form-actions">
+          <button className="site-btn site-btn-primary" type="submit" disabled={availability.isFetching}>
+            Check availability
+          </button>
+        </div>
       </form>
 
       {availability.isFetching && <p role="status">Checking availability…</p>}
@@ -136,9 +147,7 @@ function AvailabilityView({ lot }: { lot: Lot }) {
           />
         )
       )}
-
-      <Link to="/lots">Back to all lots</Link>
-    </section>
+    </>
   )
 }
 
