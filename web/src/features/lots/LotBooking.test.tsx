@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { LoginPage, SESSION_ENDED } from '../auth/LoginPage'
 import { SPACE_TAKEN } from '../reservations/api'
-import { ANA, CENTAR, createTestQueryClient, csrfRoute, problem, type Route as ApiRoute, stubApi } from '../../test/apiStub'
+import { ANA, CENTAR, createTestQueryClient, csrfRoute, type Handler, problem, type Route as ApiRoute, stubApi } from '../../test/apiStub'
 import { LotAvailabilityPage } from './LotAvailabilityPage'
 
 afterEach(() => {
@@ -39,9 +39,9 @@ function availability(freeSpaces: { id: string; label: string }[]) {
 }
 
 /** The lot, its availability (one answer per call, the last one repeats) and the booking answer. */
-function routes(book: () => Response | Promise<Response>, answers: { id: string; label: string }[][] = [[A02]]) {
+function routes(book: Handler, answers: { id: string; label: string }[][] = [[A02]]) {
   let call = 0
-  const result: Record<ApiRoute, () => Response> = { ...csrfRoute }
+  const result: Record<ApiRoute, Handler> = { ...csrfRoute }
   result[`GET /api/v1/lots/${CENTAR.id}`] = () => Response.json(CENTAR)
   result[`GET /api/v1/lots/${CENTAR.id}/availability`] = () => availability(answers[Math.min(call++, answers.length - 1)])
   result['POST /api/v1/reservations'] = book
