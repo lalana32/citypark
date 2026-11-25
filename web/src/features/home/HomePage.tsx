@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { AnimatedCityMap } from './cityMap/AnimatedCityMap'
 import { DEMO_LOTS } from './demoLots'
+import { FaqSection } from './FaqSection'
+import { HowItWorksSection } from './HowItWorksSection'
 import { LocationsSection } from './LocationsSection'
 import { defaultSlot } from './slot'
 import { SpaceSelection } from './SpaceSelection'
@@ -18,6 +20,8 @@ export function HomePage() {
       <Hero />
       <LocationsSection onViewLot={setLotId} />
       <SpaceSelection key={lot.id} lot={lot} slot={slot} />
+      <HowItWorksSection />
+      <FaqSection />
     </>
   )
 }
