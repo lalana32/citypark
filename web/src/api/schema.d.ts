@@ -591,6 +591,23 @@ export interface paths {
                          *           "id": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e17",
                          *           "label": "A-17"
                          *         }
+                         *       ],
+                         *       "spaces": [
+                         *         {
+                         *           "id": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e01",
+                         *           "label": "A-01",
+                         *           "isFree": false
+                         *         },
+                         *         {
+                         *           "id": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e02",
+                         *           "label": "A-02",
+                         *           "isFree": true
+                         *         },
+                         *         {
+                         *           "id": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e03",
+                         *           "label": "A-03",
+                         *           "isFree": false
+                         *         }
                          *       ]
                          *     }
                          */
@@ -1789,7 +1806,8 @@ export interface components {
         };
         /**
          * @description Free spaces of a lot for one interval. `start` and `end` are echoed with the
-         *     Europe/Sarajevo offset; `totalSpaces` counts active spaces.
+         *     Europe/Sarajevo offset; `totalSpaces` counts active spaces. `spaces` lists every
+         *     active space in label order with whether it is free, so a client can draw the whole lot.
          */
         AvailabilityResponse: {
             /** Format: uuid */
@@ -1803,6 +1821,7 @@ export interface components {
             /** Format: int32 */
             availableSpaces: number | string;
             freeSpaces: components["schemas"]["FreeSpaceResponse"][];
+            spaces: components["schemas"]["SpaceAvailabilityResponse"][];
         };
         /**
          * @description Body for creating a reservation: exactly one of SpaceId (that space) or LotId (the first free
@@ -1982,6 +2001,12 @@ export interface components {
         ReservationState: "Upcoming" | "InProgress" | "Finished" | "Cancelled";
         /** @enum {unknown} */
         ReservationStatus: "Active" | "Cancelled";
+        SpaceAvailabilityResponse: {
+            /** Format: uuid */
+            id: string;
+            label: string;
+            isFree: boolean;
+        };
         SpaceResponse: {
             /** Format: uuid */
             id: string;
