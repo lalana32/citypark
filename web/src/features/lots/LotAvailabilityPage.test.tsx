@@ -6,20 +6,42 @@ import { CENTAR, createTestQueryClient, problem, type Route as ApiRoute, stubApi
 import { LOT_NOT_FOUND } from './api'
 import { LotAvailabilityPage } from './LotAvailabilityPage'
 import { NO_FREE_SPACES } from './SpaceGrid'
+import { QUOTE_FAILED } from './SummaryPanel'
 
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
 })
 
-/** The lot route, plus the availability route when it has an answer. */
-function routes(respond?: () => Response): Record<ApiRoute, () => Response> {
+/** The lot route, plus the availability and quote routes when they have an answer. */
+function routes(respond?: () => Response, quote?: () => Response): Record<ApiRoute, () => Response> {
   const result: Record<ApiRoute, () => Response> = {}
   result[`GET /api/v1/lots/${CENTAR.id}`] = () => Response.json(CENTAR)
   if (respond) {
     result[`GET /api/v1/lots/${CENTAR.id}/availability`] = respond
   }
+  if (quote) {
+    result[`GET /api/v1/lots/${CENTAR.id}/quote`] = quote
+  }
   return result
+}
+
+function quoteOf(price: number, billedHours: number) {
+  return () =>
+    Response.json({
+      lotId: CENTAR.id,
+      start: '2026-12-01T07:00:00+01:00',
+      end: '2026-12-01T08:00:00+01:00',
+      billedHours,
+      price,
+      currency: 'BAM',
+    })
+}
+
+function summaryRow(term: string): string | null {
+  const summary = screen.getByRole('complementary', { name: 'Your parking' })
+  const dt = Array.from(summary.querySelectorAll('dt')).find((node) => node.textContent === term)
+  return dt?.nextElementSibling?.textContent ?? null
 }
 
 function availability(freeSpaces: { id: string; label: string }[]) {
@@ -140,6 +162,36 @@ describe('LotAvailabilityPage', () => {
     fireEvent.change(screen.getByLabelText('To'), { target: { value: '09:00' } })
 
     expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('fills the panel with the chosen space, the times and the price from the quote', async () => {
+    const fetchMock = stubApi(routes(() => availability(TWO_SPACES), quoteOf(2.5, 1)))
+    renderPage()
+
+    expect(await screen.findByText('Pick a time and check availability, then choose a free space.')).toBeDefined()
+    await check()
+    fireEvent.click(await screen.findByRole('button', { name: 'Space A-03' }))
+
+    expect(await screen.findByText('2.50 BAM')).toBeDefined()
+    expect(summaryRow('Space')).toBe('A-03')
+    expect(summaryRow('Arrival')).toBe('07:00')
+    expect(summaryRow('Departure')).toBe('08:00')
+    expect(summaryRow('Duration')).toBe('1 h')
+    expect(summaryRow('Price')).toBe('2.50 BAM (1 h billed)')
+    const [quoteCall] = fetchMock.mock.calls
+      .map(([input]) => input as Request)
+      .filter((request) => new URL(request.url).pathname.endsWith('/quote'))
+    expect(new URL(quoteCall.url).searchParams.get('start')).toMatch(/T07:00:00\+0[12]:00$/)
+  })
+
+  it('says so in the panel when the price cannot be loaded', async () => {
+    stubApi(routes(() => availability(TWO_SPACES), () => new Response(null, { status: 500 })))
+    renderPage()
+
+    await check()
+
+    expect(await screen.findByText(QUOTE_FAILED)).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Space A-02' })).toBeDefined()
   })
 
   it('shows a loading state while the lot loads', async () => {

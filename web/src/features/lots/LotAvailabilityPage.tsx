@@ -7,11 +7,13 @@ import {
   UNEXPECTED_ERROR,
   useAvailability,
   useLot,
+  useQuote,
 } from './api'
 import { addMinutes, type Interval, lotToday, quarterHours, STEP_MINUTES, toLotInstant } from './interval'
 import { IntervalPicker } from './IntervalPicker'
 import { BACK_TO_LOTS, LotHeader } from './LotHeader'
 import { type FreeSpace, SpaceGrid } from './SpaceGrid'
+import { SummaryPanel } from './SummaryPanel'
 import './lot.css'
 import { SignedOutError, SPACE_TAKEN, SpaceTakenError, useCreateReservation } from '../reservations/api'
 import { BookingPanel } from '../reservations/BookingPanel'
@@ -57,6 +59,9 @@ function AvailabilityView({ lot }: { lot: Lot }) {
   const navigate = useNavigate()
   const location = useLocation()
 
+  // `value` still matches `submitted` here: changing it clears the check.
+  const checked = availability.isSuccess ? value : null
+  const quote = useQuote(lot.id, checked && submitted)
   const errors = availability.error instanceof AvailabilityError ? availability.error.errors : undefined
 
   function submit(event: FormEvent) {
@@ -100,51 +105,69 @@ function AvailabilityView({ lot }: { lot: Lot }) {
     <>
       <LotHeader lot={lot} />
 
-      <form className="site-card lot-form" onSubmit={submit} noValidate>
-        {errors?.form && (
-          <p role="alert" className="lot-alert">
-            {errors.form}
-          </p>
-        )}
-        <IntervalPicker
-          opensAt={lot.opensAt}
-          closesAt={lot.closesAt}
-          value={value}
-          onChange={change}
-          errors={errors?.fields}
-        />
-        <div className="lot-form-actions">
-          <button className="site-btn site-btn-primary" type="submit" disabled={availability.isFetching}>
-            Check availability
-          </button>
+      <div className="lot-layout">
+        <div className="lot-main">
+          <form className="site-card lot-form" onSubmit={submit} noValidate>
+            {errors?.form && (
+              <p role="alert" className="lot-alert">
+                {errors.form}
+              </p>
+            )}
+            <IntervalPicker
+              opensAt={lot.opensAt}
+              closesAt={lot.closesAt}
+              value={value}
+              onChange={change}
+              errors={errors?.fields}
+            />
+            <div className="lot-form-actions">
+              <button className="site-btn site-btn-primary" type="submit" disabled={availability.isFetching}>
+                Check availability
+              </button>
+            </div>
+          </form>
+
+          {availability.isFetching && (
+            <p role="status" className="lot-status">
+              Checking availability…
+            </p>
+          )}
+          {availability.isError && !errors && (
+            <p role="alert" className="lot-alert lot-spaces">
+              {UNEXPECTED_ERROR}
+            </p>
+          )}
+          {booking.error instanceof SpaceTakenError && (
+            <p role="alert" className="lot-alert lot-spaces">
+              {SPACE_TAKEN}
+            </p>
+          )}
+          {availability.data && !availability.isFetching && (
+            <SpaceGrid availability={availability.data} selectedId={space?.id ?? null} onSelect={choose} />
+          )}
         </div>
-      </form>
 
-      {availability.isFetching && <p role="status">Checking availability…</p>}
-      {availability.isError && !errors && <p role="alert">{UNEXPECTED_ERROR}</p>}
-      {booking.error instanceof SpaceTakenError && <p role="alert">{SPACE_TAKEN}</p>}
-      {availability.data && !availability.isFetching && (
-        <SpaceGrid availability={availability.data} selectedId={space?.id ?? null} onSelect={choose} />
-      )}
-
-      {booking.data ? (
-        <BookingSuccess reservation={booking.data} />
-      ) : (
-        space &&
-        submitted && (
-          <BookingPanel
-            key={space.id}
-            lotName={lot.name}
-            spaceLabel={space.label}
-            interval={submitted}
-            pending={booking.isPending}
-            error={booking.error}
-            onConfirm={book}
-            onDismissError={() => booking.reset()}
-            onCancel={() => choose(null)}
-          />
-        )
-      )}
+        <SummaryPanel checked={checked} spaceLabel={space?.label ?? null} quote={quote}>
+          {booking.data ? (
+            <BookingSuccess reservation={booking.data} />
+          ) : (
+            space &&
+            submitted && (
+              <BookingPanel
+                key={space.id}
+                lotName={lot.name}
+                spaceLabel={space.label}
+                interval={submitted}
+                pending={booking.isPending}
+                error={booking.error}
+                onConfirm={book}
+                onDismissError={() => booking.reset()}
+                onCancel={() => choose(null)}
+              />
+            )
+          )}
+        </SummaryPanel>
+      </div>
     </>
   )
 }

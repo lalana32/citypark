@@ -95,3 +95,11 @@ export function formatDuration(start: string, end: string): string {
   const minutes = total % 60
   return [hours > 0 && `${hours} h`, minutes > 0 && `${minutes} min`].filter(Boolean).join(' ')
 }
+
+const plainDate = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' })
+
+/** "2026-12-01" -> "1 Dec 2026"; the date is already a lot date, so no zone shift. */
+export function formatDate(date: string): string {
+  const [year, month, day] = date.split('-').map(Number)
+  return plainDate.format(new Date(Date.UTC(year, month - 1, day)))
+}
