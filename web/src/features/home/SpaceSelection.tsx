@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react'
 import { useSession } from '../auth/api'
 import { AuthPrompt } from './AuthPrompt'
-import { type DemoLot, formatKm } from './demoLots'
-import { ParkingPlan, spaceLabel } from './ParkingPlan'
+import { type DemoLot, formatKm, spaceLabel } from './demoLots'
+import { ParkingPlan } from './ParkingPlan'
 import { billedHours, formatSlotTime, type Slot } from './slot'
 import './spaceSelection.css'
 
