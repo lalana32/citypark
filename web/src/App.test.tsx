@@ -93,6 +93,14 @@ describe('registration', () => {
     expect(screen.getByLabelText('Password').getAttribute('aria-invalid')).toBe('true')
   })
 
+  it('links to sign in and keeps the return target', () => {
+    stubApi(signedOut)
+    renderApp(`/register?returnTo=${encodeURIComponent('/lots/1?space=2')}`)
+
+    const link = screen.getByRole('link', { name: 'Sign in' })
+    expect(link.getAttribute('href')).toBe(`/login?returnTo=${encodeURIComponent('/lots/1?space=2')}`)
+  })
+
   it('shows the conflict when the email is taken', async () => {
     const detail = 'An account with this email already exists.'
     stubApi({ ...csrfRoute, ...signedOut, 'POST /api/v1/auth/register': () => problem(409, { detail }) })

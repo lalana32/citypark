@@ -1,5 +1,6 @@
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useRegister } from './api'
+import { AuthPage } from './AuthPage'
 import { CredentialsForm } from './CredentialsForm'
 import { readReturnTo, withReturnTo } from './returnTo'
 
@@ -10,8 +11,15 @@ export function RegisterPage() {
   const returnTo = readReturnTo(params)
 
   return (
-    <section>
-      <h2>Create an account</h2>
+    <AuthPage
+      title="Create an account"
+      intro="One account for all CityPark lots. You sign in right after."
+      footer={
+        <>
+          Already have an account? <Link to={withReturnTo('/login', returnTo)}>Sign in</Link>
+        </>
+      }
+    >
       <CredentialsForm
         submitLabel="Create account"
         passwordAutoComplete="new-password"
@@ -21,9 +29,6 @@ export function RegisterPage() {
           await navigate(withReturnTo('/login', returnTo), { state: { registered: true } })
         }}
       />
-      <p>
-        Already have an account? <Link to={withReturnTo('/login', returnTo)}>Sign in</Link>
-      </p>
-    </section>
+    </AuthPage>
   )
 }

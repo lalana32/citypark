@@ -34,32 +34,50 @@ export function CredentialsForm({ submitLabel, passwordAutoComplete, onSubmit }:
   })
 
   return (
-    <form onSubmit={submit} noValidate>
-      {errors.root?.server && <p role="alert">{errors.root.server.message}</p>}
+    <form className="auth-form" onSubmit={submit} noValidate>
+      {errors.root?.server && (
+        <p role="alert" className="auth-alert">
+          {errors.root.server.message}
+        </p>
+      )}
 
-      <label htmlFor="email">Email</label>
-      <input
-        id="email"
-        type="email"
-        autoComplete="email"
-        aria-invalid={errors.email ? true : undefined}
-        aria-describedby={errors.email ? 'email-error' : undefined}
-        {...register('email', { required: 'Email is required.' })}
-      />
-      {errors.email && <p id="email-error">{errors.email.message}</p>}
+      <div className="auth-field">
+        <label htmlFor="email">Email</label>
+        <input
+          id="email"
+          className="auth-input"
+          type="email"
+          autoComplete="email"
+          aria-invalid={errors.email ? true : undefined}
+          aria-describedby={errors.email ? 'email-error' : undefined}
+          {...register('email', { required: 'Email is required.' })}
+        />
+        {errors.email && (
+          <p id="email-error" className="auth-field-error">
+            {errors.email.message}
+          </p>
+        )}
+      </div>
 
-      <label htmlFor="password">Password</label>
-      <input
-        id="password"
-        type="password"
-        autoComplete={passwordAutoComplete}
-        aria-invalid={errors.password ? true : undefined}
-        aria-describedby={errors.password ? 'password-error' : undefined}
-        {...register('password', { required: 'Password is required.' })}
-      />
-      {errors.password && <p id="password-error">{errors.password.message}</p>}
+      <div className="auth-field">
+        <label htmlFor="password">Password</label>
+        <input
+          id="password"
+          className="auth-input"
+          type="password"
+          autoComplete={passwordAutoComplete}
+          aria-invalid={errors.password ? true : undefined}
+          aria-describedby={errors.password ? 'password-error' : undefined}
+          {...register('password', { required: 'Password is required.' })}
+        />
+        {errors.password && (
+          <p id="password-error" className="auth-field-error">
+            {errors.password.message}
+          </p>
+        )}
+      </div>
 
-      <button type="submit" disabled={isSubmitting}>
+      <button className="site-btn site-btn-primary auth-submit" type="submit" disabled={isSubmitting}>
         {submitLabel}
       </button>
     </form>

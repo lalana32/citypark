@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { useLogin } from './api'
+import { AuthPage } from './AuthPage'
 import { CredentialsForm } from './CredentialsForm'
 import { readReturnTo, withReturnTo } from './returnTo'
 
@@ -12,9 +13,16 @@ export function LoginPage() {
   const notice = loginNotice(location.state)
 
   return (
-    <section>
-      <h2>Sign in</h2>
-      {notice && <p role="status">{notice}</p>}
+    <AuthPage
+      title="Sign in"
+      intro="Sign in to book a space and see your reservations."
+      notice={notice}
+      footer={
+        <>
+          No account? <Link to={withReturnTo('/register', returnTo)}>Create one</Link>
+        </>
+      }
+    >
       <CredentialsForm
         submitLabel="Sign in"
         passwordAutoComplete="current-password"
@@ -23,10 +31,7 @@ export function LoginPage() {
           await navigate(returnTo ?? '/', { replace: true })
         }}
       />
-      <p>
-        No account? <Link to={withReturnTo('/register', returnTo)}>Create one</Link>
-      </p>
-    </section>
+    </AuthPage>
   )
 }
 
