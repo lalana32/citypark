@@ -50,6 +50,15 @@ function renderPage() {
   )
 }
 
+const PAST = { start: '2020-01-10T09:00:00+00:00', end: '2020-01-10T10:00:00+00:00' }
+
+// The space labels of the cards in a group, in the order shown.
+function spacesIn(group: HTMLElement) {
+  return within(group)
+    .getAllByRole('article')
+    .map((card) => within(card).getByText(/^[A-Z]-\d{2}$/).textContent)
+}
+
 async function cardOf(spaceLabel: string) {
   return (await screen.findByText(spaceLabel)).closest('article')!
 }
@@ -75,6 +84,35 @@ describe('my reservations', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'My reservations' })).toBeDefined()
   })
 
+  it('splits the reservations into upcoming, soonest first, and past, which includes the cancelled ones', async () => {
+    stubApi(
+      routes(() =>
+        Response.json(
+          page([
+            reservation({ id: 'later', spaceLabel: 'L-01', start: '2099-12-03T09:00:00+00:00', end: '2099-12-03T10:00:00+00:00' }),
+            reservation({ id: 'cancelled', spaceLabel: 'X-01', state: 'Cancelled' }),
+            reservation({ id: 'sooner', spaceLabel: 'S-01' }),
+            reservation({ id: 'old', spaceLabel: 'O-01', state: 'Finished', ...PAST }),
+          ]),
+        ),
+      ),
+    )
+    renderPage()
+
+    const upcoming = await screen.findByRole('region', { name: 'Upcoming' })
+    const past = screen.getByRole('region', { name: 'Past' })
+    expect(spacesIn(upcoming)).toEqual(['S-01', 'L-01'])
+    expect(spacesIn(past)).toEqual(['X-01', 'O-01'])
+  })
+
+  it('leaves out a group that has no reservations', async () => {
+    stubApi(routes(() => Response.json(page([reservation({ state: 'Finished', ...PAST })]))))
+    renderPage()
+
+    expect(await screen.findByRole('region', { name: 'Past' })).toBeDefined()
+    expect(screen.queryByRole('region', { name: 'Upcoming' })).toBeNull()
+  })
+
   it('offers the cancel only when allowed', async () => {
     const soon = new Date(Date.now() + 10 * 60_000).toISOString()
     stubApi(
@@ -82,7 +120,7 @@ describe('my reservations', () => {
         Response.json(
           page([
             reservation(),
-            reservation({ id: 'b', spaceLabel: 'B-01', state: 'Finished' }),
+            reservation({ id: 'b', spaceLabel: 'B-01', state: 'Finished', ...PAST }),
             reservation({ id: 'c', spaceLabel: 'C-03', start: soon }),
           ]),
         ),
@@ -112,9 +150,12 @@ describe('my reservations', () => {
     expect(calls(fetchMock, CANCEL)).toHaveLength(0)
     fireEvent.click(screen.getByRole('button', { name: 'Yes, cancel' }))
 
-    const card = await cardOf('A-02')
-    await waitFor(() => expect(within(card).getByText('Cancelled')).toBeDefined())
+    // The cancelled card moves from Upcoming to Past, so it is looked up again inside Past.
+    const past = await screen.findByRole('region', { name: 'Past' })
+    const card = within(past).getByText('A-02').closest('article')!
+    expect(within(card).getByText('Cancelled')).toBeDefined()
     expect(within(card).queryByRole('button', { name: 'Cancel' })).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Upcoming' })).toBeNull()
     expect(calls(fetchMock, CANCEL)).toHaveLength(1)
     expect(calls(fetchMock, LIST)).toHaveLength(2)
   })

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { Link } from 'react-router'
 import { Pager } from '../../components/Pager'
-import { canCancel, type Reservation, useCancelReservation, useMyReservations } from './api'
+import { canCancel, groupReservations, type Reservation, useCancelReservation, useMyReservations } from './api'
 import { ReservationCard } from './ReservationCard'
 import { CancelAction } from './ReservationParts'
 import './reservations.css'
@@ -10,6 +10,8 @@ export function MyReservationsPage() {
   const [page, setPage] = useState(1)
   const reservations = useMyReservations(page)
   const now = useNow()
+  const items = reservations.data?.items ?? []
+  const groups = groupReservations(items)
 
   return (
     <section className="res-page">
@@ -22,27 +24,45 @@ export function MyReservationsPage() {
 
         {reservations.isPending && <p role="status">Loading reservations…</p>}
         {reservations.isError && <p role="alert">We could not load your reservations. Please try again.</p>}
-        {reservations.data && reservations.data.items.length === 0 && (
+        {reservations.data && items.length === 0 && (
           <p>
             You have no reservations yet. <Link to="/lots">Find a parking lot</Link>
           </p>
         )}
-        {reservations.data && reservations.data.items.length > 0 && (
+        {reservations.data && items.length > 0 && (
           <>
-            <ul className="res-list">
-              {reservations.data.items.map((reservation) => (
-                <li key={reservation.id}>
-                  <ReservationCard
-                    reservation={reservation}
-                    actions={<MyCancel reservation={reservation} cancellable={canCancel(reservation, now)} />}
-                  />
-                </li>
-              ))}
-            </ul>
+            <ReservationGroup title="Upcoming" items={groups.upcoming} now={now} />
+            <ReservationGroup title="Past" items={groups.past} now={now} />
             <Pager page={page} totalPages={Number(reservations.data.totalPages ?? 1)} onChange={setPage} />
           </>
         )}
       </div>
+    </section>
+  )
+}
+
+function ReservationGroup({ title, items, now }: { title: string; items: Reservation[]; now: number }) {
+  const titleId = useId()
+
+  if (items.length === 0) {
+    return null
+  }
+
+  return (
+    <section className="res-group" aria-labelledby={titleId}>
+      <h2 id={titleId} className="site-display res-group-title">
+        {title}
+      </h2>
+      <ul className="res-list">
+        {items.map((reservation) => (
+          <li key={reservation.id}>
+            <ReservationCard
+              reservation={reservation}
+              actions={<MyCancel reservation={reservation} cancellable={canCancel(reservation, now)} />}
+            />
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }
