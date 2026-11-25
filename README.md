@@ -20,7 +20,8 @@ Query plans for availability and the overlap check are in [docs/performance.md](
 | `CityPark.Infrastructure` | Application, Domain              |
 | `CityPark.Api`            | Application, Infrastructure      |
 
-Every project under `src/` has a matching test project under `tests/`.
+Every project under `src/` has a matching test project under `tests/`. `tests/CityPark.Architecture.Tests`
+checks the layer rules described in [docs/architecture.md](docs/architecture.md).
 
 ## Prerequisites
 
