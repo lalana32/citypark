@@ -34,8 +34,8 @@ describe('session', () => {
     stubApi(signedIn)
     renderApp('/')
 
-    expect(await screen.findByText('Parking reservations.')).toBeDefined()
-    expect(screen.getByText(ANA.email)).toBeDefined()
+    expect(await screen.findByText(ANA.email)).toBeDefined()
+    expect(screen.getByRole('heading', { name: 'Stop circling. Start parking.' })).toBeDefined()
   })
 
   it('logs out and returns to the login screen', async () => {
