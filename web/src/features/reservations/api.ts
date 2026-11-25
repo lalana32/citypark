@@ -41,7 +41,21 @@ export function canCancel(reservation: Pick<Reservation, 'state' | 'start'>, now
   return reservation.state === 'Upcoming' && remaining >= CANCEL_CUTOFF_MINUTES * 60_000
 }
 
-export const ALREADY_CANCELLED = 'This reservation is already cancelled.'
+export type ReservationGroups = { upcoming: Reservation[]; past: Reservation[] }
+
+// Grouped by the server's state, so the group always agrees with the badge.
+export function groupReservations(items: Reservation[]): ReservationGroups {
+  const isUpcoming = (reservation: Reservation) =>
+    reservation.state === 'Upcoming' || reservation.state === 'InProgress'
+  const byStart = (a: Reservation, b: Reservation) => new Date(a.start).getTime() - new Date(b.start).getTime()
+
+  return {
+    upcoming: items.filter(isUpcoming).sort(byStart),
+    past: items.filter((reservation) => !isUpcoming(reservation)).sort((a, b) => byStart(b, a)),
+  }
+}
+
+export const ALREADY_CANCELLED ='This reservation is already cancelled.'
 export const RESERVATION_NOT_FOUND = 'This reservation no longer exists.'
 
 /** The server refused the cancel; the message is safe to show as it is. */

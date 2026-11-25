@@ -4,6 +4,8 @@ import {
   canCancel,
   cancelErrorMessage,
   formatPrice,
+  groupReservations,
+  type Reservation,
   RESERVATION_NOT_FOUND,
   toBookingErrors,
   UNEXPECTED_ERROR,
@@ -30,6 +32,32 @@ describe('toBookingErrors', () => {
 describe('formatPrice', () => {
   it('always shows two decimals and the currency', () => {
     expect(formatPrice({ price: 5, currency: 'BAM' })).toBe('5.00 BAM')
+  })
+})
+
+describe('groupReservations', () => {
+  const at = (id: string, state: Reservation['state'], start: string): Reservation => ({
+    id,
+    lotName: 'Centar',
+    spaceLabel: id,
+    start,
+    end: start,
+    plate: 'A12K345',
+    price: 5,
+    currency: 'BAM',
+    state,
+  })
+
+  it('puts the active ones in upcoming, soonest first, and the rest in past, newest first', () => {
+    const groups = groupReservations([
+      at('later', 'Upcoming', '2026-12-03T09:00:00Z'),
+      at('now', 'InProgress', '2026-12-01T09:00:00Z'),
+      at('cancelled', 'Cancelled', '2026-12-05T09:00:00Z'),
+      at('old', 'Finished', '2026-11-01T09:00:00Z'),
+    ])
+
+    expect(groups.upcoming.map((r) => r.id)).toEqual(['now', 'later'])
+    expect(groups.past.map((r) => r.id)).toEqual(['cancelled', 'old'])
   })
 })
 

@@ -9,6 +9,16 @@
   margin-bottom: 32px;
 }
 
+.res-group + .res-group {
+  margin-top: 48px;
+}
+
+.res-group-title {
+  margin: 0 0 16px;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
 .res-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
