@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from '../../App'
 import { ANA, createTestQueryClient, csrfRoute, page, problem, type Route as ApiRoute, stubApi } from '../../test/apiStub'
 import type { Reservation } from './api'
+import { CANCELLED_NOTICE } from './MyReservationsPage'
 
 afterEach(() => {
   cleanup()
@@ -158,16 +159,48 @@ describe('my reservations', () => {
     expect(screen.queryByRole('region', { name: 'Upcoming' })).toBeNull()
     expect(calls(fetchMock, CANCEL)).toHaveLength(1)
     expect(calls(fetchMock, LIST)).toHaveLength(2)
+
+    const notice = await screen.findByRole('status')
+    expect(notice.textContent).toBe(CANCELLED_NOTICE)
+    expect(document.activeElement).toBe(notice)
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('asks in a dialog what is cancelled and that it cannot be undone', async () => {
+    stubApi(routes(() => Response.json(page([reservation()]))))
+    renderPage()
+
+    fireEvent.click(within(await cardOf('A-02')).getByRole('button', { name: 'Cancel' }))
+
+    const dialog = screen.getByRole('dialog', { name: 'Cancel this reservation?' })
+    expect(dialog.getAttribute('aria-modal')).toBe('true')
+    expect(within(dialog).getByText('Space A-02 at Centar, 1 Dec 2099, 10:00–11:30.')).toBeDefined()
+    expect(within(dialog).getByText(/cannot be undone/)).toBeDefined()
+    // The safe choice has the focus, so Enter does not cancel by accident.
+    expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Keep it' }))
   })
 
   it('keeps the reservation when the user changes their mind', async () => {
     const fetchMock = stubApi(routes(() => Response.json(page([reservation()]))))
     renderPage()
 
-    fireEvent.click(within(await cardOf('A-02')).getByRole('button', { name: 'Cancel' }))
+    const cancelButton = within(await cardOf('A-02')).getByRole('button', { name: 'Cancel' })
+    fireEvent.click(cancelButton)
     fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
 
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDefined()
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(document.activeElement).toBe(cancelButton)
+    expect(calls(fetchMock, CANCEL)).toHaveLength(0)
+  })
+
+  it('closes the dialog on Escape without cancelling', async () => {
+    const fetchMock = stubApi(routes(() => Response.json(page([reservation()]))))
+    renderPage()
+
+    fireEvent.click(within(await cardOf('A-02')).getByRole('button', { name: 'Cancel' }))
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(screen.queryByRole('dialog')).toBeNull()
     expect(calls(fetchMock, CANCEL)).toHaveLength(0)
   })
 
