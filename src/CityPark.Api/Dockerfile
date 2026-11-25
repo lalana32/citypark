@@ -5,7 +5,8 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # global.json is left out: it pins a 4xx SDK band, the official image ships another band.
-COPY Directory.Build.props dotnet-tools.json ./
+# .editorconfig carries the analyzer settings, such as generated_code for the migrations.
+COPY .editorconfig Directory.Build.props dotnet-tools.json ./
 COPY src/CityPark.Domain/CityPark.Domain.csproj src/CityPark.Domain/
 COPY src/CityPark.Application/CityPark.Application.csproj src/CityPark.Application/
 COPY src/CityPark.Infrastructure/CityPark.Infrastructure.csproj src/CityPark.Infrastructure/
