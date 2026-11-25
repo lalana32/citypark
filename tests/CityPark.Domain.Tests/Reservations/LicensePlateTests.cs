@@ -51,7 +51,9 @@ public class LicensePlateTests
     [InlineData("   ")]
     public void Constructor_WithInvalidPlate_ThrowsDomainException(string input)
     {
-        Assert.Throws<DomainException>(() => new LicensePlate(input));
+        var exception = Assert.Throws<DomainException>(() => new LicensePlate(input));
+
+        Assert.Equal("Plate", exception.Field);
     }
 
     [Fact]
