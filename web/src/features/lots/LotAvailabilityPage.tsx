@@ -147,7 +147,7 @@ function AvailabilityView({ lot }: { lot: Lot }) {
           )}
         </div>
 
-        <SummaryPanel checked={checked} spaceLabel={space?.label ?? null} quote={quote}>
+        <SummaryPanel lotName={lot.name} checked={checked} spaceLabel={space?.label ?? null} quote={quote}>
           {booking.data ? (
             <BookingSuccess reservation={booking.data} />
           ) : (
@@ -155,9 +155,7 @@ function AvailabilityView({ lot }: { lot: Lot }) {
             submitted && (
               <BookingPanel
                 key={space.id}
-                lotName={lot.name}
                 spaceLabel={space.label}
-                interval={submitted}
                 pending={booking.isPending}
                 error={booking.error}
                 onConfirm={book}

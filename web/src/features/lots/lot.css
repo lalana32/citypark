@@ -123,6 +123,45 @@
   border-top: 1.5px solid var(--line);
 }
 
+.lot-booking-title {
+  margin: 0 0 16px;
+  font-size: 18px;
+}
+
+.lot-booking-fields {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.lot-field-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.lot-booking-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.lot-booking-actions .site-btn {
+  flex: 1 1 auto;
+}
+
+.lot-booking-fields:disabled .site-btn,
+.lot-booking-actions .site-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.lot-booking-fields:disabled .site-btn-primary {
+  cursor: progress;
+}
+
 @media (max-width: 899px) {
   .lot-layout {
     grid-template-columns: 1fr;

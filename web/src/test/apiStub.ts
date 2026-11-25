@@ -25,7 +25,7 @@ export function page<T>(items: T[], totalPages = 1) {
 export const csrfRoute = { 'GET /api/v1/auth/csrf': () => Response.json({ token: 'test-token' }) }
 
 /** Answers each "METHOD /path" with its handler and everything else with 404. */
-export function stubApi(routes: Record<Route, () => Response>) {
+export function stubApi(routes: Record<Route, () => Response | Promise<Response>>) {
   const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
     const request = input instanceof Request ? input : new Request(input)
     const route = `${request.method} ${new URL(request.url).pathname}` as Route

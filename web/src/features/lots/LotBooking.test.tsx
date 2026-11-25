@@ -39,7 +39,7 @@ function availability(freeSpaces: { id: string; label: string }[]) {
 }
 
 /** The lot, its availability (one answer per call, the last one repeats) and the booking answer. */
-function routes(book: () => Response, answers: { id: string; label: string }[][] = [[A02]]) {
+function routes(book: () => Response | Promise<Response>, answers: { id: string; label: string }[][] = [[A02]]) {
   let call = 0
   const result: Record<ApiRoute, () => Response> = { ...csrfRoute }
   result[`GET /api/v1/lots/${CENTAR.id}`] = () => Response.json(CENTAR)
@@ -65,7 +65,6 @@ async function bookA02(plate = 'A12K345') {
   fireEvent.click(await screen.findByRole('button', { name: 'Check availability' }))
   fireEvent.click(await screen.findByRole('button', { name: 'Space A-02' }))
   fireEvent.change(screen.getByLabelText('License plate'), { target: { value: plate } })
-  fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
   fireEvent.click(screen.getByRole('button', { name: 'Confirm booking' }))
 }
 
@@ -89,6 +88,30 @@ describe('booking a space', () => {
     expect(screen.getByText('5.00 BAM')).toBeDefined()
     const [request] = calls(fetchMock, 'POST /api/v1/reservations')
     expect(await request.json()).toMatchObject({ spaceId: A02.id, plate: 'A12K345' })
+  })
+
+  it('locks the form while the booking is pending, so it is sent only once', async () => {
+    let answer: (response: Response) => void = () => {}
+    const fetchMock = stubApi(
+      routes(
+        () =>
+          new Promise<Response>((resolve) => {
+            answer = resolve
+          }),
+      ),
+    )
+    renderPage()
+
+    await bookA02()
+
+    const pending = await screen.findByRole('button', { name: 'Booking…' })
+    expect(pending.closest('fieldset')?.disabled).toBe(true)
+    fireEvent.click(pending)
+    fireEvent.submit(pending.closest('form')!)
+    answer(Response.json(RESERVATION, { status: 201 }))
+
+    expect(await screen.findByRole('heading', { name: 'Booking confirmed' })).toBeDefined()
+    expect(calls(fetchMock, 'POST /api/v1/reservations')).toHaveLength(1)
   })
 
   it('says the space was just taken and reloads the free spaces after a 409', async () => {
