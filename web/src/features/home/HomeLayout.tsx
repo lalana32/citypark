@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router'
+import { SiteFooter } from './SiteFooter'
 import { SiteNav } from './SiteNav'
 import './site.css'
 
@@ -10,6 +11,7 @@ export function HomeLayout() {
       <main>
         <Outlet />
       </main>
+      <SiteFooter />
     </div>
   )
 }
