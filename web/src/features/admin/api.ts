@@ -1,9 +1,15 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../api/client'
 import type { components } from '../../api/schema'
 import { sessionKey } from '../auth/api'
 import { lotsKey, type Lot } from '../lots/api'
-import { SignedOutError, UNEXPECTED_ERROR } from '../reservations/api'
+import {
+  CancelRejectedError,
+  cancelErrorMessage,
+  reservationsKey,
+  SignedOutError,
+  UNEXPECTED_ERROR,
+} from '../reservations/api'
 
 type Problem = components['schemas']['HttpValidationProblemDetails']
 
@@ -127,6 +133,63 @@ export function useAddSpace(lotId: string) {
       if (error instanceof SignedOutError) {
         queryClient.setQueryData(sessionKey, null)
       }
+    },
+  })
+}
+
+export type AdminReservation = components['schemas']['AdminReservationResponse']
+export type AdminReservationPage = components['schemas']['PagedResultOfAdminReservationResponse']
+
+const RESERVATIONS_PAGE_SIZE = 20
+
+export function useAdminReservations(page: number) {
+  return useQuery({
+    queryKey: [...reservationsKey, 'admin', page],
+    queryFn: async (): Promise<AdminReservationPage> => {
+      const { data, response } = await api.GET('/api/v1/admin/reservations', {
+        params: { query: { page, pageSize: RESERVATIONS_PAGE_SIZE } },
+      })
+      if (!data) {
+        throw new Error(`The reservations request failed with ${response.status}.`)
+      }
+      return data
+    },
+    placeholderData: keepPreviousData,
+  })
+}
+
+// An admin may cancel at any time, also after the start (R9), but a finished stay has nothing left to cancel.
+export function adminCanCancel(reservation: Pick<AdminReservation, 'state'>): boolean {
+  return reservation.state === 'Upcoming' || reservation.state === 'InProgress'
+}
+
+export function useAdminCancelReservation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (id: string): Promise<void> => {
+      const { error, response } = await api.POST('/api/v1/admin/reservations/{id}/cancel', {
+        params: { path: { id } },
+      })
+      if (response.ok) {
+        return
+      }
+      if (response.status === 401) {
+        throw new SignedOutError()
+      }
+      throw new CancelRejectedError(
+        response.status === 403 ? NOT_AN_ADMIN : cancelErrorMessage(response.status, error as Problem | undefined),
+      )
+    },
+    onSettled: async (_data, error) => {
+      if (error instanceof SignedOutError) {
+        queryClient.setQueryData(sessionKey, null)
+        return
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: reservationsKey }),
+        queryClient.invalidateQueries({ queryKey: lotsKey }),
+      ])
     },
   })
 }

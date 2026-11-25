@@ -1,5 +1,7 @@
 import { Link, Navigate, Outlet, Route, Routes } from 'react-router'
+import { AdminLayout } from './features/admin/AdminLayout'
 import { AdminLotsPage } from './features/admin/AdminLotsPage'
+import { AdminReservationsPage } from './features/admin/AdminReservationsPage'
 import { hasRole, useSession } from './features/auth/api'
 import { LoginPage } from './features/auth/LoginPage'
 import { RegisterPage } from './features/auth/RegisterPage'
@@ -45,8 +47,11 @@ function App() {
           <Route index element={<p>Parking reservations.</p>} />
           <Route path="/reservations" element={<MyReservationsPage />} />
           <Route element={<RequireRole role={ADMIN} />}>
-            <Route path="/admin" element={<Navigate to="/admin/lots" replace />} />
-            <Route path="/admin/lots" element={<AdminLotsPage />} />
+            <Route element={<AdminLayout />}>
+              <Route path="/admin" element={<Navigate to="/admin/lots" replace />} />
+              <Route path="/admin/lots" element={<AdminLotsPage />} />
+              <Route path="/admin/reservations" element={<AdminReservationsPage />} />
+            </Route>
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
