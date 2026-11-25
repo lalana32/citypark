@@ -38,10 +38,10 @@ function availability(freeSpaces: { id: string; label: string }[]) {
   })
 }
 
-/** The lot, its availability (one answer per call, the last one repeats) and the booking answer. */
-function routes(book: Handler, answers: { id: string; label: string }[][] = [[A02]]) {
+/** The session, the lot, its availability (one answer per call, the last one repeats) and the booking answer. */
+function routes(book: Handler, answers: { id: string; label: string }[][] = [[A02]], me: Handler = () => Response.json(ANA)) {
   let call = 0
-  const result: Record<ApiRoute, Handler> = { ...csrfRoute }
+  const result: Record<ApiRoute, Handler> = { ...csrfRoute, 'GET /api/v1/auth/me': me }
   result[`GET /api/v1/lots/${CENTAR.id}`] = () => Response.json(CENTAR)
   result[`GET /api/v1/lots/${CENTAR.id}/availability`] = () => availability(answers[Math.min(call++, answers.length - 1)])
   result['POST /api/v1/reservations'] = book
@@ -163,5 +163,40 @@ describe('booking a space', () => {
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Secret123!' } })
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
     expect(await screen.findByRole('heading', { name: 'Centar' })).toBeDefined()
+  })
+})
+
+describe('reserving as a guest', () => {
+  const asGuest = () => routes(() => Response.json(RESERVATION, { status: 201 }), [[A02]], () => problem(401))
+
+  async function pickA02() {
+    fireEvent.click(await screen.findByRole('button', { name: 'Check availability' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Space A-02' }))
+  }
+
+  it('asks a guest to sign in at Reserve instead of showing the plate field', async () => {
+    stubApi(asGuest())
+    renderPage()
+
+    await pickA02()
+    fireEvent.click(await screen.findByRole('button', { name: 'Reserve' }))
+
+    expect(screen.getByRole('dialog', { name: 'Log in to continue' })).toBeDefined()
+    expect(screen.queryByLabelText('License plate')).toBeNull()
+    const returnTo = new URL(screen.getByRole('link', { name: 'Log in' }).getAttribute('href')!, 'http://x').searchParams.get('returnTo')
+    expect(returnTo).toContain(`/lots/${CENTAR.id}?`)
+    expect(returnTo).toContain(`space=${A02.id}`)
+  })
+
+  it('closes the prompt on Continue browsing and keeps the chosen space', async () => {
+    stubApi(asGuest())
+    renderPage()
+
+    await pickA02()
+    fireEvent.click(await screen.findByRole('button', { name: 'Reserve' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Continue browsing' }))
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Space A-02' }).getAttribute('aria-pressed')).toBe('true')
   })
 })

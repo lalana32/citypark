@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useCallback, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import {
   AvailabilityError,
@@ -18,6 +18,9 @@ import './lot.css'
 import { SignedOutError, SPACE_TAKEN, SpaceTakenError, useCreateReservation } from '../reservations/api'
 import { BookingPanel } from '../reservations/BookingPanel'
 import { BookingSuccess } from '../reservations/BookingSuccess'
+import { GuestBooking } from '../reservations/GuestBooking'
+import { useSession } from '../auth/api'
+import { AuthPrompt } from '../auth/AuthPrompt'
 
 export function LotAvailabilityPage() {
   const { id = '' } = useParams()
@@ -65,6 +68,10 @@ function AvailabilityView({ lot }: { lot: Lot }) {
   const booking = useCreateReservation(lot.id)
   const navigate = useNavigate()
   const location = useLocation()
+  const session = useSession()
+  const [asking, setAsking] = useState(false)
+  // Stable, so the dialog does not move focus again on every render.
+  const closePrompt = useCallback(() => setAsking(false), [])
 
   const checked = availability.isSuccess ? checkedInUrl : null
   const quote = useQuote(lot.id, checked && submitted)
@@ -169,7 +176,11 @@ function AvailabilityView({ lot }: { lot: Lot }) {
             <BookingSuccess reservation={booking.data} />
           ) : (
             space &&
-            submitted && (
+            submitted &&
+            !session.isPending &&
+            (session.data === null ? (
+              <GuestBooking spaceLabel={space.label} onReserve={() => setAsking(true)} />
+            ) : (
               <BookingPanel
                 key={space.id}
                 spaceLabel={space.label}
@@ -179,10 +190,12 @@ function AvailabilityView({ lot }: { lot: Lot }) {
                 onDismissError={() => booking.reset()}
                 onCancel={() => choose(null)}
               />
-            )
+            ))
           )}
         </SummaryPanel>
       </div>
+
+      {asking && <AuthPrompt returnTo={location.pathname + location.search} onClose={closePrompt} />}
     </>
   )
 }
