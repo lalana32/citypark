@@ -25,13 +25,13 @@ export function SiteFooter() {
                 <Link to="/">Home</Link>
               </li>
               <li>
-                <a href="#locations">Parking lots</a>
+                <Link to="/#locations">Parking lots</Link>
               </li>
               <li>
-                <a href="#how-it-works">How it works</a>
+                <Link to="/#how-it-works">How it works</Link>
               </li>
               <li>
-                <a href="#faq">FAQ</a>
+                <Link to="/#faq">FAQ</Link>
               </li>
             </ul>
           </nav>

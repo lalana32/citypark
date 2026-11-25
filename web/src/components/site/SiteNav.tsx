@@ -10,20 +10,20 @@ type NavItem = { label: string; href: string; route?: boolean }
 
 const GUEST_LINKS: NavItem[] = [
   { label: 'Home', href: '/', route: true },
-  { label: 'Parking lots', href: '#locations' },
-  { label: 'How it works', href: '#how-it-works' },
-  { label: 'Contact', href: '#contact' },
+  { label: 'Parking lots', href: '/#locations' },
+  { label: 'How it works', href: '/#how-it-works' },
+  { label: 'Contact', href: '/#contact' },
 ]
 
 const USER_LINKS: NavItem[] = [
   { label: 'Home', href: '/', route: true },
-  { label: 'Parking lots', href: '#locations' },
+  { label: 'Parking lots', href: '/#locations' },
   { label: 'My reservations', href: '/reservations', route: true },
 ]
 
 const ADMIN_LINK: NavItem = { label: 'Admin', href: '/admin/lots', route: true }
 
-/** Top navigation of the public home page; it overlays the hero on wide screens. */
+/** Top navigation of every page; section links go to the home page sections. */
 export function SiteNav() {
   const session = useSession()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -108,9 +108,9 @@ function NavLinks({ links, onNavigate }: { links: NavItem[]; onNavigate?: () => 
         {item.label}
       </NavLink>
     ) : (
-      <a key={item.label} className="site-navlink" href={item.href} onClick={onNavigate}>
+      <Link key={item.label} className="site-navlink" to={item.href} onClick={onNavigate}>
         {item.label}
-      </a>
+      </Link>
     ),
   )
 }

@@ -27,10 +27,15 @@ describe('site navigation', () => {
   it('offers a visitor the page sections, log in and register', () => {
     renderNav(() => problem(401))
 
-    const names = mainNav()
+    const links = mainNav()
       .getAllByRole('link')
-      .map((link) => link.textContent)
-    expect(names).toEqual(['Home', 'Parking lots', 'How it works', 'Contact'])
+      .map((link) => [link.textContent, link.getAttribute('href')])
+    expect(links).toEqual([
+      ['Home', '/'],
+      ['Parking lots', '/#locations'],
+      ['How it works', '/#how-it-works'],
+      ['Contact', '/#contact'],
+    ])
     expect(screen.getByRole('link', { name: 'Log in' }).getAttribute('href')).toBe('/login')
     expect(screen.getAllByRole('link', { name: 'Register' })[0].getAttribute('href')).toBe('/register')
     expect(screen.queryByRole('button', { name: 'My account' })).toBeNull()

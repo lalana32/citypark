@@ -20,9 +20,9 @@ describe('site footer', () => {
     const nav = within(screen.getByRole('navigation', { name: 'Footer' }))
     expect(nav.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
       '/',
-      '#locations',
-      '#how-it-works',
-      '#faq',
+      '/#locations',
+      '/#how-it-works',
+      '/#faq',
     ])
     expect(screen.getByRole('link', { name: 'Terms of use' }).getAttribute('href')).toBe('/terms')
     expect(screen.getByRole('link', { name: 'Privacy policy' }).getAttribute('href')).toBe('/privacy')
