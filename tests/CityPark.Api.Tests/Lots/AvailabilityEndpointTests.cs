@@ -30,6 +30,11 @@ public class AvailabilityEndpointTests(ClockedApiFactory factory) : IClassFixtur
         Assert.Equal(
             ["A-02", "A-03"],
             body.GetProperty("freeSpaces").EnumerateArray().Select(s => s.GetProperty("label").GetString()));
+        // The inactive A-01 is left out; without reservations every active space is free.
+        Assert.Equal(
+            [("A-02", true), ("A-03", true)],
+            body.GetProperty("spaces").EnumerateArray()
+                .Select(s => (s.GetProperty("label").GetString(), s.GetProperty("isFree").GetBoolean())));
     }
 
     [Fact]

@@ -531,6 +531,23 @@
                       "id": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e17",
                       "label": "A-17"
                     }
+                  ],
+                  "spaces": [
+                    {
+                      "id": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e01",
+                      "label": "A-01",
+                      "isFree": false
+                    },
+                    {
+                      "id": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e02",
+                      "label": "A-02",
+                      "isFree": true
+                    },
+                    {
+                      "id": "019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e03",
+                      "label": "A-03",
+                      "isFree": false
+                    }
                   ]
                 }
               }
@@ -1797,7 +1814,8 @@
           "end",
           "totalSpaces",
           "availableSpaces",
-          "freeSpaces"
+          "freeSpaces",
+          "spaces"
         ],
         "type": "object",
         "properties": {
@@ -1834,9 +1852,15 @@
             "items": {
               "$ref": "#/components/schemas/FreeSpaceResponse"
             }
+          },
+          "spaces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpaceAvailabilityResponse"
+            }
           }
         },
-        "description": "Free spaces of a lot for one interval. `start` and `end` are echoed with the\nEurope/Sarajevo offset; `totalSpaces` counts active spaces."
+        "description": "Free spaces of a lot for one interval. `start` and `end` are echoed with the\nEurope/Sarajevo offset; `totalSpaces` counts active spaces. `spaces` lists every\nactive space in label order with whether it is free, so a client can draw the whole lot."
       },
       "CreateReservationRequest": {
         "required": [
@@ -2477,6 +2501,26 @@
           "Active",
           "Cancelled"
         ]
+      },
+      "SpaceAvailabilityResponse": {
+        "required": [
+          "id",
+          "label",
+          "isFree"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string"
+          },
+          "isFree": {
+            "type": "boolean"
+          }
+        }
       },
       "SpaceResponse": {
         "required": [

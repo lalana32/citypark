@@ -28,6 +28,12 @@ internal static class LotExamples
         [
             new FreeSpaceResponse(Guid.Parse("019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e02"), "A-02"),
             new FreeSpaceResponse(Guid.Parse("019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e17"), "A-17"),
+        ],
+        // Shortened to three of the 30 spaces.
+        [
+            new SpaceAvailabilityResponse(Guid.Parse("019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e01"), "A-01", IsFree: false),
+            new SpaceAvailabilityResponse(Guid.Parse("019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e02"), "A-02", IsFree: true),
+            new SpaceAvailabilityResponse(Guid.Parse("019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e03"), "A-03", IsFree: false),
         ]);
 
     // 10:00–11:15: 75 minutes, billed as 2 hours (R8).

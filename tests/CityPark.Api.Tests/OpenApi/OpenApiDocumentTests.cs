@@ -25,6 +25,7 @@ public class OpenApiDocumentTests(ApiFactory factory) : IClassFixture<ApiFactory
     [InlineData("/api/v1/lots", "items")]
     [InlineData("/api/v1/lots/{id}", "totalSpaces")]
     [InlineData("/api/v1/lots/{id}/availability", "freeSpaces")]
+    [InlineData("/api/v1/lots/{id}/availability", "spaces")]
     [InlineData("/api/v1/lots/{id}/quote", "billedHours")]
     public async Task LotEndpoints_HaveA200Example(string path, string exampleProperty)
     {
