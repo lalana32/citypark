@@ -5,7 +5,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { LoginPage, SESSION_ENDED } from '../auth/LoginPage'
 import { RegisterPage } from '../auth/RegisterPage'
 import { SPACE_TAKEN } from '../reservations/api'
-import { ANA, CENTAR, createTestQueryClient, csrfRoute, type Handler, problem, type Route as ApiRoute, stubApi } from '../../test/apiStub'
+import {
+  ANA,
+  availabilityOf,
+  CENTAR,
+  createTestQueryClient,
+  csrfRoute,
+  type Handler,
+  problem,
+  type Route as ApiRoute,
+  stubApi,
+} from '../../test/apiStub'
 import { LotAvailabilityPage, SPACE_GONE } from './LotAvailabilityPage'
 
 afterEach(() => {
@@ -28,23 +38,12 @@ const RESERVATION = {
   state: 'Upcoming',
 }
 
-function availability(freeSpaces: { id: string; label: string }[]) {
-  return Response.json({
-    lotId: CENTAR.id,
-    start: '2026-12-01T07:00:00+01:00',
-    end: '2026-12-01T08:00:00+01:00',
-    totalSpaces: CENTAR.totalSpaces,
-    availableSpaces: freeSpaces.length,
-    freeSpaces,
-  })
-}
-
 /** The session, the lot, its availability (one answer per call, the last one repeats) and the booking answer. */
 function routes(book: Handler, answers: { id: string; label: string }[][] = [[A02]], me: Handler = () => Response.json(ANA)) {
   let call = 0
   const result: Record<ApiRoute, Handler> = { ...csrfRoute, 'GET /api/v1/auth/me': me }
   result[`GET /api/v1/lots/${CENTAR.id}`] = () => Response.json(CENTAR)
-  result[`GET /api/v1/lots/${CENTAR.id}/availability`] = () => availability(answers[Math.min(call++, answers.length - 1)])
+  result[`GET /api/v1/lots/${CENTAR.id}/availability`] = () => availabilityOf(answers[Math.min(call++, answers.length - 1)])
   result['POST /api/v1/reservations'] = book
   return result
 }

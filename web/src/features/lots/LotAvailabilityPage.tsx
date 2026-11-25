@@ -12,7 +12,7 @@ import {
 import { addMinutes, type Interval, lotToday, quarterHours, readInterval, STEP_MINUTES, toLotInstant } from './interval'
 import { IntervalPicker } from './IntervalPicker'
 import { BACK_TO_LOTS, LotHeader } from './LotHeader'
-import { type FreeSpace, SpaceGrid } from './SpaceGrid'
+import { SpacePlan } from './SpacePlan'
 import { SummaryPanel } from './SummaryPanel'
 import './lot.css'
 import { SignedOutError, SPACE_TAKEN, SpaceTakenError, useCreateReservation } from '../reservations/api'
@@ -90,9 +90,9 @@ function AvailabilityView({ lot }: { lot: Lot }) {
     show(value)
   }
 
-  function choose(next: FreeSpace | null) {
+  function choose(nextSpaceId: string | null) {
     booking.reset()
-    show(checkedInUrl, next?.id)
+    show(checkedInUrl, nextSpaceId)
   }
 
   function book(plate: string) {
@@ -170,7 +170,12 @@ function AvailabilityView({ lot }: { lot: Lot }) {
             </p>
           )}
           {availability.data && !availability.isFetching && (
-            <SpaceGrid availability={availability.data} selectedId={space?.id ?? null} onSelect={choose} />
+            <SpacePlan
+              lotName={lot.name}
+              availability={availability.data}
+              selectedId={space?.id ?? null}
+              onSelect={choose}
+            />
           )}
         </div>
 

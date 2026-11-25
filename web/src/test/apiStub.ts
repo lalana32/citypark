@@ -18,6 +18,26 @@ export const CENTAR = {
   totalSpaces: 30,
 }
 
+type TestSpace = { id: string; label: string }
+
+/** An availability answer of CENTAR: the free spaces, plus occupied ones that only show in `spaces`. */
+export function availabilityOf(free: TestSpace[], occupied: TestSpace[] = []) {
+  const spaces = [
+    ...free.map((space) => ({ ...space, isFree: true })),
+    ...occupied.map((space) => ({ ...space, isFree: false })),
+  ].sort((a, b) => a.label.localeCompare(b.label))
+
+  return Response.json({
+    lotId: CENTAR.id,
+    start: '2026-12-01T07:00:00+01:00',
+    end: '2026-12-01T08:00:00+01:00',
+    totalSpaces: spaces.length,
+    availableSpaces: free.length,
+    freeSpaces: free,
+    spaces,
+  })
+}
+
 export function page<T>(items: T[], totalPages = 1) {
   return { items, page: 1, pageSize: 20, totalCount: items.length, totalPages }
 }
