@@ -23,7 +23,10 @@ public sealed record LicensePlate
         if (!Format.IsMatch(normalized))
         {
             throw new DomainException(
-                $"License plate '{value}' does not match the Bosnia and Herzegovina format, for example A12K345.");
+                $"License plate '{value}' does not match the Bosnia and Herzegovina format, for example A12K345.")
+            {
+                Field = "Plate",
+            };
         }
 
         Value = normalized;
