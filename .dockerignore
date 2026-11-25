@@ -1,0 +1,17 @@
+# Build context of the API image: only src/ and the root build files are needed.
+.git
+.github
+.vs
+.vscode
+.idea
+**/bin
+**/obj
+tests
+TestResults
+docs
+scripts
+web
+*.log
+# Local settings and secrets never enter an image.
+.env
+.env.*
