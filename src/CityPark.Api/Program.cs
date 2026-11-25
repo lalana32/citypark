@@ -21,8 +21,10 @@ builder.Services.AddInfrastructure(
     ?? throw new InvalidOperationException("Connection string 'CityPark' is not configured."));
 builder.Services.AddApplication();
 
-builder.Services.AddCityParkAuthentication(builder.Environment);
-builder.Services.AddCityParkCsrfProtection(builder.Environment);
+// HTTPS only, except in Development (Vite proxy) or with Cookies__AllowHttp (local Docker stack).
+var cookieSecurePolicy = CookieSecurity.PolicyFor(builder.Environment, builder.Configuration);
+builder.Services.AddCityParkAuthentication(cookieSecurePolicy);
+builder.Services.AddCityParkCsrfProtection(cookieSecurePolicy);
 builder.Services.AddCityParkRateLimiting();
 
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
