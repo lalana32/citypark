@@ -1,40 +1,54 @@
-import { DEMO_LOTS, type DemoLot, formatKm, freeSpaces, totalSpaces } from './demoLots'
+import { useState } from 'react'
+import { Link } from 'react-router'
+import { type Lot, useAvailability, useLots } from '../lots/api'
+import { type Interval, isOpenFor, nextSlot, toLotInstant } from '../lots/interval'
 import './locations.css'
 
-type Props = { onViewLot: (lotId: string) => void }
+export function LocationsSection() {
+  const lots = useLots(1)
+  const [slot] = useState(() => nextSlot())
 
-export function LocationsSection({ onViewLot }: Props) {
   return (
     <section id="locations" className="site-sec site-locations" aria-labelledby="locations-title">
       <div className="site-wrap">
         <p className="site-eyebrow">Parking lots</p>
         <h2 id="locations-title" className="site-h2 site-display">
-          Our three locations
+          Our locations
         </h2>
         <p className="site-sub">
-          Pick a parking lot and see how many spaces are free right now. No account needed to browse.
+          Pick a parking lot and see how many spaces are free for the next two hours. No account needed to browse.
         </p>
 
-        <ul className="loc-grid">
-          {DEMO_LOTS.map((lot, index) => (
-            <LocationCard key={lot.id} lot={lot} photoShift={index} onView={() => onViewLot(lot.id)} />
-          ))}
-        </ul>
+        {lots.isPending && <p role="status">Loading parking lots…</p>}
+        {lots.isError && <p role="alert">We could not load the parking lots. Please try again.</p>}
+        {lots.data && lots.data.items.length === 0 && <p>There are no parking lots yet.</p>}
+        {lots.data && lots.data.items.length > 0 && (
+          <ul className="loc-grid">
+            {lots.data.items.map((lot, index) => (
+              <LocationCard key={lot.id} lot={lot} slot={slot} photoShift={index % 3} />
+            ))}
+          </ul>
+        )}
       </div>
     </section>
   )
 }
 
-function LocationCard({ lot, photoShift, onView }: { lot: DemoLot; photoShift: number; onView: () => void }) {
-  const free = freeSpaces(lot)
+function LocationCard({ lot, slot, photoShift }: { lot: Lot; slot: Interval | null; photoShift: number }) {
+  const open = slot !== null && isOpenFor(lot, slot)
+  const availability = useAvailability(
+    lot.id,
+    open ? { start: toLotInstant(slot.date, slot.start), end: toLotInstant(slot.date, slot.end) } : null,
+  )
+  const free = freeLabel(open, availability)
 
   return (
     <li className="site-card loc-card">
       <div className="loc-photo">
         <LotPhoto shift={photoShift} />
-        <span className="loc-pill">
+        <span className={open ? 'loc-pill' : 'loc-pill loc-pill-closed'}>
           <i aria-hidden="true" />
-          {free} free spaces
+          {free.pill}
         </span>
       </div>
 
@@ -48,7 +62,7 @@ function LocationCard({ lot, photoShift, onView }: { lot: DemoLot; photoShift: n
             </p>
           </div>
           <p className="loc-price">
-            <b className="site-display">{formatKm(lot.pricePerHour)}</b>
+            <b className="site-display">{formatKm(lot.hourlyPrice)}</b>
             <span>per hour</span>
           </p>
         </div>
@@ -56,25 +70,39 @@ function LocationCard({ lot, photoShift, onView }: { lot: DemoLot; photoShift: n
         <dl className="loc-tiles">
           <div className="loc-tile">
             <dt>Total spaces</dt>
-            <dd className="site-display">{totalSpaces()}</dd>
+            <dd className="site-display">{lot.totalSpaces}</dd>
           </div>
           <div className="loc-tile">
             <dt>Free</dt>
-            <dd className="site-display">{free}</dd>
+            <dd className="site-display">{free.tile}</dd>
           </div>
         </dl>
 
-        <a
-          className="site-btn site-btn-primary loc-view"
-          href="#space-selection"
-          aria-label={`View parking: ${lot.name}`}
-          onClick={onView}
-        >
+        <Link className="site-btn site-btn-primary loc-view" to={`/lots/${lot.id}`} aria-label={`View parking: ${lot.name}`}>
           View parking
-        </a>
+        </Link>
       </div>
     </li>
   )
+}
+
+function freeLabel(open: boolean, availability: ReturnType<typeof useAvailability>) {
+  if (!open) {
+    return { pill: 'Closed at this time', tile: 'Closed' }
+  }
+  if (availability.data) {
+    const count = String(availability.data.availableSpaces)
+    return { pill: `${count} free spaces`, tile: count }
+  }
+  if (availability.isError) {
+    return { pill: 'Free spaces unavailable', tile: '—' }
+  }
+  return { pill: 'Checking free spaces…', tile: '…' }
+}
+
+// The API sends BAM; the site shows the local "KM".
+function formatKm(amount: Lot['hourlyPrice']) {
+  return `${Number(amount).toFixed(2)} KM`
 }
 
 /** Placeholder illustration until real photos of the lots are cleared for publishing. */
