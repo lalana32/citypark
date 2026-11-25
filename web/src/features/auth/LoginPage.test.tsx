@@ -85,6 +85,33 @@ describe('LoginPage', () => {
   })
 })
 
+describe('return target', () => {
+  it('goes back to the in-app return target after signing in', async () => {
+    stubApi({ ...csrfRoute, 'GET /api/v1/auth/me': () => Response.json(ANA), 'POST /api/v1/auth/login': () => Response.json(ANA) })
+    renderApp(`/login?returnTo=${encodeURIComponent('/reservations?page=2')}`)
+
+    signIn(ANA.email, 'Secret123!')
+
+    expect(await screen.findByText('My reservations')).toBeDefined()
+  })
+
+  it('ignores an external return target and goes home', async () => {
+    stubApi({ ...csrfRoute, 'GET /api/v1/auth/me': () => Response.json(ANA), 'POST /api/v1/auth/login': () => Response.json(ANA) })
+    renderApp(`/login?returnTo=${encodeURIComponent('//evil.com/phish')}`)
+
+    signIn(ANA.email, 'Secret123!')
+
+    expect(await screen.findByText('Home')).toBeDefined()
+  })
+
+  it('keeps the return target on the link to registration', () => {
+    stubApi({})
+    renderApp(`/login?returnTo=${encodeURIComponent('/reservations')}`)
+
+    expect(screen.getByRole('link', { name: 'Create one' }).getAttribute('href')).toBe('/register?returnTo=%2Freservations')
+  })
+})
+
 describe('RequireAuth', () => {
   it('shows the page when the cookie session is valid', async () => {
     stubApi({ 'GET /api/v1/auth/me': () => Response.json(ANA) })

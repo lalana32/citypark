@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { useSession } from './api'
+import { withReturnTo } from './returnTo'
 
 export function RequireAuth() {
   const session = useSession()
@@ -14,7 +15,7 @@ export function RequireAuth() {
   }
 
   if (!session.data) {
-    return <Navigate to="/login" replace state={{ from: location }} />
+    return <Navigate to={withReturnTo('/login', location.pathname + location.search + location.hash)} replace />
   }
 
   return <Outlet />

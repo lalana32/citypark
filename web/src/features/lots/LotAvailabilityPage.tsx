@@ -21,6 +21,7 @@ import { BookingSuccess } from '../reservations/BookingSuccess'
 import { GuestBooking } from '../reservations/GuestBooking'
 import { useSession } from '../auth/api'
 import { AuthPrompt } from '../auth/AuthPrompt'
+import { withReturnTo } from '../auth/returnTo'
 
 export function LotAvailabilityPage() {
   const { id = '' } = useParams()
@@ -106,7 +107,7 @@ function AvailabilityView({ lot }: { lot: Lot }) {
             // The hook has already refreshed the free spaces; this one is gone.
             show(checkedInUrl)
           } else if (error instanceof SignedOutError) {
-            void navigate('/login', { state: { from: location, sessionEnded: true } })
+            void navigate(withReturnTo('/login', location.pathname + location.search), { state: { sessionEnded: true } })
           }
         },
       },
