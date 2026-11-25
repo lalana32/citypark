@@ -68,3 +68,22 @@ export function formatLotDateTime(instant: string): string {
 export function lotToday(now = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: LOT_TIME_ZONE }).format(now)
 }
+
+const DAY_MINUTES = 24 * 60
+
+/** From the next quarter hour on the lot clock, for `minutes`; null if it would run into the next day. */
+export function nextSlot(now = new Date(), minutes = 120): Interval | null {
+  const start = Math.ceil(toMinutes(lotTime.format(now)) / STEP_MINUTES) * STEP_MINUTES
+  const end = start + minutes
+  if (end >= DAY_MINUTES) {
+    return null
+  }
+  return { date: lotToday(now), start: toTime(start), end: toTime(end) }
+}
+
+/** True when the interval lies inside the lot's opening hours; it may end at closing time. */
+export function isOpenFor(lot: { opensAt: string; closesAt: string }, interval: Interval): boolean {
+  return (
+    toMinutes(lot.opensAt) <= toMinutes(interval.start) && toMinutes(interval.end) <= toMinutes(lot.closesAt)
+  )
+}

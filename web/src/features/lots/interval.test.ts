@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatLotDateTime, quarterHours, toLotInstant } from './interval'
+import { formatLotDateTime, isOpenFor, nextSlot, quarterHours, toLotInstant } from './interval'
 
 describe('quarterHours', () => {
   it('lists every quarter hour of the window, both ends included', () => {
@@ -32,5 +32,32 @@ describe('formatLotDateTime', () => {
 
   it('moves to the next day when lot time is already past midnight', () => {
     expect(formatLotDateTime('2026-12-01T23:30:00+00:00')).toBe('2 Dec 2026, 00:30')
+  })
+})
+
+describe('nextSlot', () => {
+  it('starts at the next quarter hour on the lot clock and lasts two hours', () => {
+    expect(nextSlot(new Date('2026-12-01T09:07:00Z'))).toEqual({ date: '2026-12-01', start: '10:15', end: '12:15' })
+  })
+
+  it('keeps a start that is already on the grid', () => {
+    expect(nextSlot(new Date('2026-12-01T09:00:00Z'))).toEqual({ date: '2026-12-01', start: '10:00', end: '12:00' })
+  })
+
+  it('gives no slot when two hours would run past midnight', () => {
+    expect(nextSlot(new Date('2026-12-01T21:30:00Z'))).toBeNull()
+  })
+})
+
+describe('isOpenFor', () => {
+  const lot = { opensAt: '07:00:00', closesAt: '22:00:00' }
+
+  it('accepts a slot that ends at closing time', () => {
+    expect(isOpenFor(lot, { date: '2026-12-01', start: '20:00', end: '22:00' })).toBe(true)
+  })
+
+  it('rejects a slot that starts before opening or ends after closing', () => {
+    expect(isOpenFor(lot, { date: '2026-12-01', start: '06:45', end: '08:45' })).toBe(false)
+    expect(isOpenFor(lot, { date: '2026-12-01', start: '20:15', end: '22:15' })).toBe(false)
   })
 })
