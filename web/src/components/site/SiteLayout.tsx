@@ -6,11 +6,12 @@ import './site.css'
 
 /** Shared frame of every page: navigation, page content and footer. */
 export function SiteLayout() {
+  const { pathname } = useLocation()
   useScrollToHash()
 
   return (
     <div className="site">
-      <SiteNav />
+      <SiteNav overHero={pathname === '/'} />
       <main>
         <Outlet />
       </main>

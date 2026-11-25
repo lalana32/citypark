@@ -1,9 +1,18 @@
-/* On wide screens the nav floats over the hero, so the hero keeps its full size and look. */
+/* A solid bar above the page content; see .site-header-over-hero for the home page. */
 .site-header {
-  position: absolute;
-  inset: 0 0 auto;
+  position: relative;
   z-index: 10;
   padding: 0;
+  background: var(--night);
+}
+
+/* On wide screens the home page nav floats over the hero, so the hero keeps its full size and look. */
+@media (min-width: 900px) {
+  .site-header-over-hero {
+    position: absolute;
+    inset: 0 0 auto;
+    background: none;
+  }
 }
 
 .site-header-bar {
@@ -169,11 +178,6 @@
 
 /* ── Mobile: hamburger menu, nav sits above the hero instead of over it ── */
 @media (max-width: 899px) {
-  .site-header {
-    position: relative;
-    background: var(--night);
-  }
-
   .site-header-bar {
     height: 72px;
   }
