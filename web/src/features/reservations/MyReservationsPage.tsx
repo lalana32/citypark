@@ -87,18 +87,37 @@ export function MyReservationsPage() {
           </p>
         )}
 
-        {reservations.isPending && <p role="status">Loading reservations…</p>}
-        {reservations.isError && <p role="alert">We could not load your reservations. Please try again.</p>}
-        {reservations.data && items.length === 0 && (
-          <p>
-            You have no reservations yet. <Link to="/lots">Find a parking lot</Link>
-          </p>
+        {reservations.isPending && <LoadingCards />}
+        {reservations.isError && (
+          <div role="alert" className="site-card res-state">
+            <h2 className="site-display res-state-title">We could not load your reservations</h2>
+            <p className="res-state-text">Check your connection and try again.</p>
+            <button
+              type="button"
+              className="site-btn site-btn-primary"
+              disabled={reservations.isFetching}
+              onClick={() => reservations.refetch()}
+            >
+              {reservations.isFetching ? 'Trying again…' : 'Try again'}
+            </button>
+          </div>
         )}
-        {reservations.data && items.length > 0 && (
+        {reservations.isSuccess && items.length === 0 && (
+          <div className="site-card res-state">
+            <h2 className="site-display res-state-title">No reservations yet</h2>
+            <p className="res-state-text">Find a free space in one of the city's parking lots and book it in a minute.</p>
+            <Link className="site-btn site-btn-primary" to="/lots">
+              Find a parking lot
+            </Link>
+          </div>
+        )}
+        {reservations.isSuccess && items.length > 0 && (
           <>
             <ReservationGroup title="Upcoming" items={groups.upcoming} now={now} onCancel={openDialog} />
             <ReservationGroup title="Past" items={groups.past} now={now} onCancel={openDialog} />
-            <Pager page={page} totalPages={Number(reservations.data.totalPages ?? 1)} onChange={changePage} />
+            <div className="res-pager">
+              <Pager page={page} totalPages={Number(reservations.data.totalPages ?? 1)} onChange={changePage} />
+            </div>
           </>
         )}
       </div>
@@ -155,6 +174,24 @@ function ReservationGroup({ title, items, now, onCancel }: GroupProps) {
         ))}
       </ul>
     </section>
+  )
+}
+
+// Grey placeholders in the shape of the cards; screen readers hear only the status text.
+function LoadingCards() {
+  return (
+    <div role="status">
+      <span className="res-visually-hidden">Loading reservations…</span>
+      <ul className="res-list" aria-hidden="true">
+        {[0, 1, 2].map((index) => (
+          <li key={index} className="site-card res-card res-skeleton">
+            <span className="res-skeleton-line res-skeleton-title" />
+            <span className="res-skeleton-line" />
+            <span className="res-skeleton-line res-skeleton-short" />
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 

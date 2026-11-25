@@ -3,7 +3,16 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from '../../App'
-import { ANA, createTestQueryClient, csrfRoute, page, problem, type Route as ApiRoute, stubApi } from '../../test/apiStub'
+import {
+  ANA,
+  createTestQueryClient,
+  csrfRoute,
+  type Handler,
+  page,
+  problem,
+  type Route as ApiRoute,
+  stubApi,
+} from '../../test/apiStub'
 import type { Reservation } from './api'
 import { CANCELLED_NOTICE } from './MyReservationsPage'
 
@@ -31,8 +40,8 @@ function reservation(overrides: Partial<Reservation> = {}): Reservation {
   }
 }
 
-function routes(list: () => Response, cancel: () => Response = () => new Response(null, { status: 204 })) {
-  const result: Record<ApiRoute, () => Response> = {
+function routes(list: Handler, cancel: Handler = () => new Response(null, { status: 204 })) {
+  const result: Record<ApiRoute, Handler> = {
     ...csrfRoute,
     'GET /api/v1/auth/me': () => Response.json(ANA),
     [LIST]: list,
@@ -251,7 +260,36 @@ describe('my reservations', () => {
     stubApi(routes(() => Response.json(page([]))))
     renderPage()
 
-    expect(await screen.findByText(/You have no reservations yet/)).toBeDefined()
+    expect(await screen.findByRole('heading', { name: 'No reservations yet' })).toBeDefined()
     expect(screen.getByRole('link', { name: 'Find a parking lot' }).getAttribute('href')).toBe('/lots')
+    expect(screen.queryByRole('region', { name: 'Upcoming' })).toBeNull()
+  })
+
+  it('says it is loading while the reservations are on their way', async () => {
+    let answer: (response: Response) => void = () => {}
+    stubApi(routes(() => new Promise<Response>((resolve) => (answer = resolve))))
+    renderPage()
+
+    const loading = await screen.findByText('Loading reservations…')
+    expect(loading.closest('[role="status"]')).not.toBeNull()
+
+    answer(Response.json(page([reservation()])))
+    expect(await cardOf('A-02')).toBeDefined()
+    expect(screen.queryByText('Loading reservations…')).toBeNull()
+  })
+
+  it('offers to try again when the reservations cannot be loaded', async () => {
+    let failing = true
+    stubApi(routes(() => (failing ? problem(500) : Response.json(page([reservation()])))))
+    renderPage()
+
+    const alert = await screen.findByRole('alert')
+    expect(within(alert).getByRole('heading', { name: 'We could not load your reservations' })).toBeDefined()
+
+    failing = false
+    fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }))
+
+    expect(await cardOf('A-02')).toBeDefined()
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 })
