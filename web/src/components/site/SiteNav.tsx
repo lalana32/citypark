@@ -86,12 +86,7 @@ export function SiteNav({ overHero = false }: Props) {
         <nav id="site-mobile-menu" className="site-wrap site-nav-mobile site-mobile-menu" aria-label="Main mobile">
           <NavLinks links={links} onNavigate={closeMenu} />
           {user ? (
-            <>
-              <Link className="site-navlink" to="/account" onClick={closeMenu}>
-                My account
-              </Link>
-              <LogoutButton className="site-navlink" />
-            </>
+            <LogoutButton className="site-navlink" />
           ) : (
             <Link className="site-navlink" to="/login" onClick={closeMenu}>
               Log in
@@ -166,9 +161,8 @@ function AccountMenu() {
 
       {open && (
         <div id="site-account-menu" className="site-account-menu">
-          <Link to="/account">Account overview</Link>
+          {/* Account overview and Profile come back when those pages exist. */}
           <Link to="/reservations">My reservations</Link>
-          <Link to="/profile">Profile</Link>
           <LogoutButton className="site-account-logout" />
         </div>
       )}

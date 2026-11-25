@@ -22,6 +22,7 @@ function renderNav(me: () => Response) {
 }
 
 const mainNav = () => within(screen.getByRole('navigation', { name: 'Main' }))
+const accountMenu = () => document.getElementById('site-account-menu')
 
 describe('site navigation', () => {
   it('offers a visitor the page sections, log in and register', () => {
@@ -52,12 +53,27 @@ describe('site navigation', () => {
 
     fireEvent.click(account)
     expect(account.getAttribute('aria-expanded')).toBe('true')
-    expect(screen.getByRole('link', { name: 'Account overview' })).toBeDefined()
-    expect(screen.getByRole('link', { name: 'Profile' })).toBeDefined()
-    expect(screen.getByRole('button', { name: 'Log out' })).toBeDefined()
+    const menu = within(accountMenu()!)
+    expect(menu.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual(['/reservations'])
+    expect(menu.getByRole('button', { name: 'Log out' })).toBeDefined()
 
     fireEvent.keyDown(document, { key: 'Escape' })
-    expect(screen.queryByRole('link', { name: 'Account overview' })).toBeNull()
+    expect(accountMenu()).toBeNull()
+  })
+
+  it('links a signed-in user only to pages that exist on mobile', async () => {
+    renderNav(() => Response.json(ANA))
+
+    await screen.findByRole('button', { name: 'My account' })
+    fireEvent.click(screen.getByRole('button', { name: 'Menu' }))
+
+    const mobileNav = within(screen.getByRole('navigation', { name: 'Main mobile' }))
+    expect(mobileNav.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
+      '/',
+      '/#locations',
+      '/reservations',
+    ])
+    expect(mobileNav.getByRole('button', { name: 'Log out' })).toBeDefined()
   })
 
   it('keeps the admin link for admins', async () => {
