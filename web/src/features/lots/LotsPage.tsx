@@ -1,47 +1,42 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
 import { Pager } from '../../components/Pager'
-import { formatRate, formatWindow, useLots } from './api'
+import { useLots } from './api'
+import { nextSlot } from './interval'
+import { LotCard } from './LotCard'
+import './lotsPage.css'
 
 export function LotsPage() {
   const [page, setPage] = useState(1)
+  const [slot] = useState(() => nextSlot())
   const lots = useLots(page)
 
   return (
-    <section>
-      <h2>Parking lots</h2>
-      {lots.isPending && <p role="status">Loading lots…</p>}
-      {lots.isError && <p role="alert">We could not load the parking lots. Please try again.</p>}
-      {lots.data && lots.data.items.length === 0 && <p>There are no parking lots yet.</p>}
-      {lots.data && lots.data.items.length > 0 && (
-        <>
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Lot</th>
-                <th scope="col">Address</th>
-                <th scope="col">Rate</th>
-                <th scope="col">Open</th>
-                <th scope="col">Spaces</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lots.data.items.map((lot) => (
-                <tr key={lot.id}>
-                  <td>
-                    <Link to={`/lots/${lot.id}`}>{lot.name}</Link>
-                  </td>
-                  <td>{lot.address}</td>
-                  <td>{formatRate(lot)}</td>
-                  <td>{formatWindow(lot)}</td>
-                  <td>{lot.totalSpaces}</td>
-                </tr>
+    <section className="lots-page" aria-labelledby="lots-title">
+      <div className="site-wrap">
+        <p className="site-eyebrow">Parking lots</p>
+        <h1 id="lots-title" className="site-h2 site-display">
+          Our locations
+        </h1>
+        <p className="site-sub">
+          Pick a parking lot and see how many spaces are free for the next two hours. No account needed to browse.
+        </p>
+
+        {lots.isPending && <p role="status">Loading parking lots…</p>}
+        {lots.isError && <p role="alert">We could not load the parking lots. Please try again.</p>}
+        {lots.data && lots.data.items.length === 0 && <p>There are no parking lots yet.</p>}
+        {lots.data && lots.data.items.length > 0 && (
+          <>
+            <ul className="loc-grid">
+              {lots.data.items.map((lot, index) => (
+                <LotCard key={lot.id} lot={lot} slot={slot} fallbackShift={index % 3} />
               ))}
-            </tbody>
-          </table>
-          <Pager page={page} totalPages={Number(lots.data.totalPages ?? 1)} onChange={setPage} />
-        </>
-      )}
+            </ul>
+            <div className="lots-pager">
+              <Pager page={page} totalPages={Number(lots.data.totalPages ?? 1)} onChange={setPage} />
+            </div>
+          </>
+        )}
+      </div>
     </section>
   )
 }

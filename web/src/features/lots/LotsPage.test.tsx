@@ -1,12 +1,24 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { CENTAR, createTestQueryClient, page, problem, stubApi } from '../../test/apiStub'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { CENTAR, createTestQueryClient, page, problem, type Route, stubApi } from '../../test/apiStub'
 import { LotsPage } from './LotsPage'
+
+const centarAvailability = {
+  [`GET /api/v1/lots/${CENTAR.id}/availability` as Route]: () =>
+    Response.json({ lotId: CENTAR.id, start: '', end: '', totalSpaces: 30, availableSpaces: 12, freeSpaces: [] }),
+}
+
+beforeEach(() => {
+  // 10:07 on the lot clock, so Centar is open for the default slot.
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-12-01T09:07:00Z'))
+})
 
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
   vi.unstubAllGlobals()
 })
 
@@ -21,22 +33,25 @@ function renderPage() {
 }
 
 describe('LotsPage', () => {
-  it('lists each lot with its rate and opening hours', async () => {
-    stubApi({ 'GET /api/v1/lots': () => Response.json(page([CENTAR])) })
+  it('shows a card per lot with its price, spaces, free spaces and link', async () => {
+    stubApi({ 'GET /api/v1/lots': () => Response.json(page([CENTAR])), ...centarAvailability })
     renderPage()
 
-    const row = (await screen.findByRole('link', { name: 'Centar' })).closest('tr')!
-    expect(within(row).getByText('2.50 BAM / hour')).toBeDefined()
-    expect(within(row).getByText('07:00–22:00')).toBeDefined()
-    expect(screen.getByRole('link', { name: 'Centar' }).getAttribute('href')).toBe(`/lots/${CENTAR.id}`)
+    expect(screen.getByRole('heading', { level: 1, name: 'Our locations' })).toBeDefined()
+    const card = within(await screen.findByRole('listitem'))
+    expect(card.getByRole('heading', { name: 'Centar' })).toBeDefined()
+    expect(card.getByText('2.50 KM')).toBeDefined()
+    expect(card.getByText('Total spaces').nextElementSibling?.textContent).toBe('30')
+    expect(await card.findByText('12 free spaces')).toBeDefined()
+    expect(card.getByRole('link', { name: 'View parking: Centar' }).getAttribute('href')).toBe(`/lots/${CENTAR.id}`)
   })
 
   it('shows a loading state until the lots arrive', async () => {
-    stubApi({ 'GET /api/v1/lots': () => Response.json(page([CENTAR])) })
+    stubApi({ 'GET /api/v1/lots': () => Response.json(page([CENTAR])), ...centarAvailability })
     renderPage()
 
-    expect(screen.getByRole('status').textContent).toBe('Loading lots…')
-    expect(await screen.findByText('Centar')).toBeDefined()
+    expect(screen.getByRole('status').textContent).toBe('Loading parking lots…')
+    expect(await screen.findByRole('heading', { name: 'Centar' })).toBeDefined()
     expect(screen.queryByRole('status')).toBeNull()
   })
 
@@ -55,13 +70,17 @@ describe('LotsPage', () => {
   })
 
   it('asks for the next page', async () => {
-    const fetchMock = stubApi({ 'GET /api/v1/lots': () => Response.json(page([CENTAR], 2)) })
+    const fetchMock = stubApi({ 'GET /api/v1/lots': () => Response.json(page([CENTAR], 2)), ...centarAvailability })
     renderPage()
 
     fireEvent.click(await screen.findByRole('button', { name: 'Next' }))
 
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
-    const second = fetchMock.mock.calls[1][0] as Request
-    expect(new URL(second.url).searchParams.get('page')).toBe('2')
+    await vi.waitFor(() => {
+      const pages = fetchMock.mock.calls
+        .map(([input]) => new URL(input instanceof Request ? input.url : String(input)))
+        .filter((url) => url.pathname === '/api/v1/lots')
+        .map((url) => url.searchParams.get('page'))
+      expect(pages).toEqual(['1', '2'])
+    })
   })
 })

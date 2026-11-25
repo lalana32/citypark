@@ -1,0 +1,34 @@
+.lots-page {
+  padding: 64px 0 96px;
+}
+
+.lots-pager nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 40px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.lots-pager button {
+  height: 40px;
+  padding: 0 18px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.lots-pager button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.lots-pager button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
