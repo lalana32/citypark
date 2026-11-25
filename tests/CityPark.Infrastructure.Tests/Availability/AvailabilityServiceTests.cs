@@ -36,6 +36,23 @@ public sealed class AvailabilityServiceTests(PostgresFixture fixture) : IClassFi
     }
 
     [Fact]
+    public async Task Spaces_ListEveryActiveSpaceInLabelOrderWithItsFreeFlag()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var lot = await AddLotAsync(ct, inactiveLabel: "A-3");
+        await AddReservationAsync(lot, "A-1", Local(10), Local(11), ReservationStatus.Active, ct);
+
+        var result = await QueryAsync(lot.Id, Local(10, 30), Local(11, 30), ct);
+
+        Assert.Equal(
+            [("A-1", false), ("A-2", true)],
+            result.Spaces.Select(s => (s.Label, s.IsFree)));
+        Assert.Equal(
+            result.Spaces.Where(s => s.IsFree).Select(s => s.Id),
+            result.FreeSpaces.Select(s => s.Id));
+    }
+
+    [Fact]
     public async Task IntervalWithLocalOffset_IsTheSameInstantAsUtc()
     {
         var ct = TestContext.Current.CancellationToken;

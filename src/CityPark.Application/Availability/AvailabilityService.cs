@@ -35,16 +35,9 @@ public sealed class AvailabilityService(IAppDbContext db, TimeProvider clock, Ti
             .SelectMany(l => l.Spaces)
             .Where(s => s.IsActive)
             .OrderBy(s => s.Label)
-            .Select(s => new
-            {
-                s.Id,
-                s.Label,
-                IsFree = !blocking.Any(r => r.SpaceId == s.Id),
-            })
+            .Select(s => new SpaceAvailability(s.Id, s.Label, !blocking.Any(r => r.SpaceId == s.Id)))
             .ToListAsync(cancellationToken);
 
-        return new AvailabilityResult(
-            spaces.Count,
-            [.. spaces.Where(s => s.IsFree).Select(s => new FreeSpace(s.Id, s.Label))]);
+        return new AvailabilityResult(spaces);
     }
 }
