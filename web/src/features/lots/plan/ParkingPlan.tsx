@@ -18,12 +18,62 @@ type Props = {
   title: string
   /** In label order; every 12 spaces make one aisle. */
   spaces: readonly PlanSpace[]
+  /** Given, the free spaces become buttons over the drawing; occupied ones stay drawing only. */
+  onSelect?: (id: string) => void
 }
 
 /** The lot drawn from above: occupied spaces hold a car, free ones show a P. */
-export function ParkingPlan({ title, spaces }: Props) {
-  const available = availableCount(spaces)
+export function ParkingPlan({ title, spaces, onSelect }: Props) {
   const height = planHeight(spaces.length)
+
+  return (
+    <div className="plan-stage">
+      <PlanDrawing title={title} spaces={spaces} height={height} />
+      {onSelect &&
+        spaces.map((space, index) =>
+          space.state === 'occupied' ? null : (
+            <SpaceButton key={space.id} space={space} index={index} height={height} onSelect={onSelect} />
+          ),
+        )}
+    </div>
+  )
+}
+
+const percent = (part: number, whole: number) => `${(part / whole) * 100}%`
+
+// Placed in percent of the drawing, so it stays on its space at any width.
+function SpaceButton({
+  space,
+  index,
+  height,
+  onSelect,
+}: {
+  space: PlanSpace
+  index: number
+  height: number
+  onSelect: (id: string) => void
+}) {
+  const { x, y } = spaceBox(index)
+
+  return (
+    <button
+      type="button"
+      className="plan-space"
+      style={{
+        left: percent(x, VIEW_W),
+        top: percent(y, height),
+        width: percent(SPACE_W, VIEW_W),
+        height: percent(SPACE_H, height),
+      }}
+      aria-label={`Space ${space.label}`}
+      aria-pressed={space.state === 'selected'}
+      onClick={() => onSelect(space.id)}
+    />
+  )
+}
+
+function PlanDrawing({ title, spaces, height }: { title: string; spaces: readonly PlanSpace[]; height: number }) {
+  const available = availableCount(spaces)
 
   return (
     <svg className="plan" viewBox={`0 0 ${VIEW_W} ${height}`} role="img" aria-label={planSummary(title, spaces)}>

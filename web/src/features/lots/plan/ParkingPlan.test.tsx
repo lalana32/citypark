@@ -1,5 +1,5 @@
-import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ParkingPlan } from './ParkingPlan'
 import { aisleCount, type PlanSpace, planHeight, spaceBox } from './planLayout'
 
@@ -26,6 +26,42 @@ describe('ParkingPlan', () => {
     }
     // Two free spaces plus the legend entry.
     expect(screen.getAllByText('Available')).toHaveLength(3)
+  })
+
+  it('has no buttons without onSelect, as on the home page', () => {
+    render(<ParkingPlan title="Centar" spaces={spaces} />)
+
+    expect(screen.queryAllByRole('button')).toHaveLength(0)
+  })
+
+  it('makes only the free spaces buttons, named by label, with the selected one pressed', () => {
+    render(<ParkingPlan title="Centar" spaces={spaces} onSelect={() => {}} />)
+
+    expect(screen.getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual([
+      'Space A-01',
+      'Space A-03',
+    ])
+    expect(screen.queryByRole('button', { name: 'Space A-02' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Space A-01', pressed: false })).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Space A-03', pressed: true })).toBeDefined()
+  })
+
+  it('reports the id of the clicked space', () => {
+    const onSelect = vi.fn()
+    render(<ParkingPlan title="Centar" spaces={spaces} onSelect={onSelect} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Space A-01' }))
+
+    expect(onSelect).toHaveBeenCalledWith('1')
+  })
+
+  it('puts each button on its space in percent of the drawing', () => {
+    render(<ParkingPlan title="Centar" spaces={spaces} onSelect={() => {}} />)
+
+    // A-03 is the third space: x 514 of 1400, y 184 of 960.
+    const button = screen.getByRole('button', { name: 'Space A-03' })
+    expect(button.style.left).toBe(`${(514 / 1400) * 100}%`)
+    expect(button.style.top).toBe(`${(184 / 960) * 100}%`)
   })
 })
 
