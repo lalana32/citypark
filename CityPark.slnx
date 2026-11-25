@@ -8,6 +8,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/CityPark.Api.Tests/CityPark.Api.Tests.csproj" />
     <Project Path="tests/CityPark.Application.Tests/CityPark.Application.Tests.csproj" />
+    <Project Path="tests/CityPark.Architecture.Tests/CityPark.Architecture.Tests.csproj" />
     <Project Path="tests/CityPark.Domain.Tests/CityPark.Domain.Tests.csproj" />
     <Project Path="tests/CityPark.Infrastructure.Tests/CityPark.Infrastructure.Tests.csproj" />
   </Folder>
