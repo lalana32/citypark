@@ -51,9 +51,86 @@
   font-weight: 600;
 }
 
-.lot-form {
+.lot-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  align-items: start;
+  gap: 32px;
   margin-top: 32px;
+}
+
+.lot-form {
   padding: 24px;
+}
+
+.lot-summary {
+  position: sticky;
+  top: 24px;
+  padding: 24px;
+}
+
+.lot-summary-title {
+  margin: 0 0 16px;
+  font-size: 20px;
+}
+
+.lot-summary-hint {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.lot-summary-list {
+  margin: 0;
+}
+
+.lot-summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.lot-summary-row:last-child {
+  border-bottom: 0;
+}
+
+.lot-summary-row dt {
+  color: var(--muted);
+}
+
+.lot-summary-row dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.lot-summary-price {
+  font-size: 18px;
+}
+
+.lot-summary-note {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* The existing booking steps sit under the summary. */
+.lot-summary > section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1.5px solid var(--line);
+}
+
+@media (max-width: 899px) {
+  .lot-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .lot-summary {
+    position: static;
+  }
 }
 
 .lot-interval {
