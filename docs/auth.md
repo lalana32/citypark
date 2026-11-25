@@ -52,7 +52,7 @@ Configured in `AuthSetup` (`src/CityPark.Api/Auth`).
 | Name | `citypark.auth` | |
 | `HttpOnly` | yes | JavaScript cannot read the session, so an XSS bug cannot steal it |
 | `SameSite` | `Strict` | The browser does not send it on requests started by another site |
-| `Secure` | always, except in `Development` | The Vite dev server proxies over plain HTTP; everywhere else is HTTPS |
+| `Secure` | always, except in `Development` or with `Cookies__AllowHttp=true` | The Vite dev server and the local Docker stack serve plain HTTP; everywhere else is HTTPS ([below](#secure-flag-on-the-local-http-stack)) |
 | Lifetime | 8 hours, sliding | Expires after 8 hours without a request. The per-request stamp check (below) reissues it on every request |
 | Persistent | no | A session cookie: closing the browser ends it |
 
@@ -67,6 +67,19 @@ Configured in `AuthSetup` (`src/CityPark.Api/Auth`).
   - Side effect: logout signs the user out on every device.
   - A server-side session store (`ITicketStore`) would end only one session, but needs a table
     and more code. It was not needed for CityPark.
+
+### Secure flag on the local HTTP stack
+
+`CookieSecurity.PolicyFor` decides the flag for both the session and the antiforgery cookie:
+`Secure` unless the environment is `Development` or `Cookies:AllowHttp` is `true`.
+
+- The Compose app profile runs the API in `Production` behind nginx on `http://localhost`, so it
+  sets `Cookies__AllowHttp=true`. Without it, login fails: antiforgery refuses to issue or check
+  a `Secure` cookie on a request that is not HTTPS, so `GET /api/v1/auth/csrf` answers 500.
+- `SameSite=Strict` and `HttpOnly` stay on. Only `Secure` is dropped, and only because there is
+  no TLS on localhost.
+- A real deployment terminates TLS and never sets the switch. `HttpCookiesTests` covers the
+  switch; `CookieAuthenticationTests` and `CsrfProtectionTests` keep `Secure` in `Production`.
 
 ## Passwords and lockout
 
@@ -97,7 +110,7 @@ The contract:
 
 | Rule | Value |
 | --- | --- |
-| Get a token | `GET /api/v1/auth/csrf` returns `{ "token": "..." }` and sets the `citypark.csrf` cookie (`HttpOnly`, `SameSite=Strict`, `Secure` outside `Development`) |
+| Get a token | `GET /api/v1/auth/csrf` returns `{ "token": "..." }` and sets the `citypark.csrf` cookie (`HttpOnly`, `SameSite=Strict`, `Secure` with the same rule as the session cookie) |
 | Send it | In the `X-XSRF-TOKEN` header on every `POST`, `PUT`, `PATCH` and `DELETE` under `/api/v1`, together with the cookie |
 | Missing or invalid | **400** ProblemDetails, `type` `https://tools.ietf.org/html/rfc9110#section-15.5.1`, the message under `errors.general`. The handler does not run, so nothing is created or changed |
 | Safe methods | `GET`, `HEAD`, `OPTIONS` and `TRACE` need no token |
@@ -144,7 +157,8 @@ trying many accounts.
 - **Known limit:** behind a reverse proxy the remote address is the proxy's, and all clients
   would share one budget. Such a deployment must configure `ForwardedHeaders` with the proxy as
   a known proxy. `X-Forwarded-For` must never be trusted without that, because any client can
-  send it. A WAF or gateway is out of scope.
+  send it. A WAF or gateway is out of scope. The local Docker stack is such a case: behind nginx
+  every client shares one budget, which is fine for one reviewer on localhost.
 
 ### CORS
 

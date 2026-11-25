@@ -26,8 +26,75 @@ checks the layer rules described in [docs/architecture.md](docs/architecture.md)
 ## Prerequisites
 
 - .NET SDK 10.0.404 or a later 10.0.4xx patch (pinned in `global.json`)
-- Docker with Compose v2 (for the local database)
+- Docker with Compose v2 (for the local database and the [whole stack](#run-the-whole-stack))
 - Node.js 22 (pinned in `web/.nvmrc`) for the [frontend](#frontend)
+
+## Run the whole stack
+
+One command starts PostgreSQL, applies the migrations, and serves the API and the web app on one
+port. Only Docker is needed, no .NET SDK or Node.js:
+
+```bash
+docker compose --profile app up --build -d --wait
+```
+
+Open <http://localhost:8080>. Three demo lots are seeded (see [Demo data](#demo-data)), and an
+administrator exists for the admin pages:
+
+| Email | Password |
+| --- | --- |
+| `admin@citypark.test` | `Admin-Pass-2026` |
+
+These are local placeholders from `docker-compose.yml`. Override them, and the port, in `.env`
+(see [Configuration](#configuration)). If port 8080 is taken, set `APP_PORT`, for example
+`APP_PORT=8081`.
+
+| Service | Image | Role |
+| --- | --- | --- |
+| `postgres` | `postgres:17` | Database, also started without the profile |
+| `migrate` | `src/CityPark.Api/Dockerfile`, target `migrator` | One-shot job: an EF Core migration bundle applies the pending migrations and exits |
+| `api` | same Dockerfile, target `api` | The API in `Production`; starts only after `migrate` succeeded; no published port |
+| `web` | `web/Dockerfile` | nginx with the built app; proxies `/api`, `/health` and `/openapi` to `api` |
+
+The browser talks only to nginx, so the API and its cookies are same-origin and CORS stays off,
+as with the Vite dev server. Each service has a health check, and `--wait` returns once all are
+healthy:
+
+```bash
+curl -i http://localhost:8080/health/ready
+```
+
+### Differences from a real deployment
+
+The images are built as for production, but the stack is meant for a local review over plain
+HTTP. The API runs in `Production` with two switches that a real deployment never sets:
+
+| Variable | Why |
+| --- | --- |
+| `Cookies__AllowHttp=true` | There is no TLS on localhost, so the session and antiforgery cookies cannot be `Secure`. `HttpOnly` and `SameSite=Strict` stay on ([docs/auth.md](docs/auth.md#secure-flag-on-the-local-http-stack)) |
+| `DemoData__Enabled=true` | Seeds the demo lots, which otherwise happens only in `Development` |
+
+No secret is in an image: `.dockerignore` keeps `.env` out of the build context, and passwords
+are passed as environment variables when the containers start.
+
+### Smoke test
+
+With the stack running, from a Bash shell (Git Bash on Windows):
+
+```bash
+bash scripts/smoke.sh
+```
+
+It checks `/health/ready`, then registers a new user, logs in, checks that the session cookie is
+sent back, and creates a reservation. The CI job "Docker smoke test" runs the same script.
+
+### Stop
+
+```bash
+docker compose --profile app down
+```
+
+Add `-v` to remove the database volume as well.
 
 ## Build
 
@@ -106,6 +173,9 @@ cp .env.example .env
 | `POSTGRES_USER`     | `citypark` | Superuser name             |
 | `POSTGRES_PASSWORD` | `citypark` | Superuser password         |
 | `POSTGRES_PORT`     | `5432`     | Host port (localhost only) |
+| `APP_PORT`          | `8080`     | Host port of the [whole stack](#run-the-whole-stack) |
+| `ADMIN_EMAIL`       | `admin@citypark.test` | Administrator of the whole stack |
+| `ADMIN_PASSWORD`    | `Admin-Pass-2026`     | Its password |
 
 ### Start
 
@@ -203,7 +273,8 @@ dotnet run --project src/CityPark.Api
 
 - The seeder runs on every start and adds only the lots whose name is not yet in the database,
   so restarting the API does not duplicate them.
-- In any other environment (`Production`, `Staging`, ...) it does nothing.
+- In any other environment (`Production`, `Staging`, ...) it does nothing, unless
+  `DemoData__Enabled=true` is set, as the Compose app profile does.
 - No demo users are seeded. The admin account comes from environment variables, see
   [docs/auth.md](docs/auth.md#administrator-seeding).
 
