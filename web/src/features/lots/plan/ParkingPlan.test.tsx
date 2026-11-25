@@ -79,8 +79,10 @@ describe('ParkingPlan', () => {
 
     // A-03 is the third space: x 514 of 1400, y 184 of 960.
     const button = screen.getByRole('button', { name: 'Space A-03' })
-    expect(button.style.left).toBe(`${(514 / 1400) * 100}%`)
-    expect(button.style.top).toBe(`${(184 / 960) * 100}%`)
+    // Compared as numbers: the CSS parser may round the value it reads back.
+    expect(button.style.left).toMatch(/%$/)
+    expect(parseFloat(button.style.left)).toBeCloseTo((514 / 1400) * 100, 3)
+    expect(parseFloat(button.style.top)).toBeCloseTo((184 / 960) * 100, 3)
   })
 })
 
