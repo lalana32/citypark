@@ -66,8 +66,10 @@ app.MapApiV1()
     .MapReservationEndpoints()
     .MapAdminEndpoints();
 
-// Demo lots for local development; a no-op in every other environment.
-await app.Services.SeedDevelopmentDataAsync(app.Environment);
+// Demo lots in Development, or with DemoData__Enabled (local Docker stack); a no-op otherwise.
+await app.Services.SeedDevelopmentDataAsync(
+    app.Environment,
+    app.Configuration.GetValue<bool>(DevelopmentDataSeeder.EnabledKey));
 
 // Every environment; skipped when the Admin__Email and Admin__Password variables are not set.
 await app.Services.SeedAdminAsync(app.Configuration[AdminSeeder.EmailKey], app.Configuration[AdminSeeder.PasswordKey]);

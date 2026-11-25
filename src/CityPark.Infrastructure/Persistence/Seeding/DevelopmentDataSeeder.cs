@@ -7,11 +7,14 @@ using Microsoft.Extensions.Hosting;
 namespace CityPark.Infrastructure.Persistence.Seeding;
 
 /// <summary>
-/// Demo lots for a fresh local database. Runs only in the Development environment and is safe to run
-/// on every start: a lot whose name is already in the database is skipped.
+/// Demo lots for a fresh local database. Runs in the Development environment, or elsewhere when
+/// <see cref="EnabledKey"/> is set (the local Docker stack). Safe to run on every start: a lot whose
+/// name is already in the database is skipped.
 /// </summary>
 public static class DevelopmentDataSeeder
 {
+    public const string EnabledKey = "DemoData:Enabled";
+
     private static readonly DemoLot[] Lots =
     [
         new("Centar", "Ferhadija 1", new Rate(2.50m, "BAM"), new OpeningHours(new TimeOnly(7, 0), new TimeOnly(22, 0)), 30),
@@ -20,18 +23,20 @@ public static class DevelopmentDataSeeder
     ];
 
     /// <summary>
-    /// Adds the demo lots that are missing. Does nothing outside Development, so a Production
-    /// database never receives demo data. The database must already be migrated.
+    /// Adds the demo lots that are missing. Outside Development it does nothing unless
+    /// <paramref name="enabledOutsideDevelopment"/> is true, so a real Production database never
+    /// receives demo data. The database must already be migrated.
     /// </summary>
     public static async Task SeedDevelopmentDataAsync(
         this IServiceProvider services,
         IHostEnvironment environment,
+        bool enabledOutsideDevelopment,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(environment);
 
-        if (!environment.IsDevelopment())
+        if (!environment.IsDevelopment() && !enabledOutsideDevelopment)
         {
             return;
         }
