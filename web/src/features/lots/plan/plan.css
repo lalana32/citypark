@@ -12,6 +12,30 @@
   letter-spacing: -0.02em;
 }
 
+/* The drawing and the space buttons share one box, so percent positions match the drawing. */
+.plan-stage {
+  position: relative;
+}
+
+.plan-space {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.plan-space:hover {
+  background: rgb(62 99 216 / 0.06);
+}
+
+.plan-space:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
 /* On a phone the plan keeps a readable size and scrolls sideways instead of shrinking. */
 .plan-scroll {
   overflow-x: auto;
@@ -27,7 +51,7 @@
 }
 
 @media (max-width: 700px) {
-  .plan-scroll .plan {
+  .plan-scroll .plan-stage {
     min-width: 860px;
   }
 
