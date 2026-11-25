@@ -23,8 +23,10 @@ const USER_LINKS: NavItem[] = [
 
 const ADMIN_LINK: NavItem = { label: 'Admin', href: '/admin/lots', route: true }
 
+type Props = { overHero?: boolean }
+
 /** Top navigation of every page; section links go to the home page sections. */
-export function SiteNav() {
+export function SiteNav({ overHero = false }: Props) {
   const session = useSession()
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -33,7 +35,7 @@ export function SiteNav() {
   const closeMenu = () => setMenuOpen(false)
 
   return (
-    <header className="site-header site-dark">
+    <header className={`site-header site-dark${overHero ? ' site-header-over-hero' : ''}`}>
       <div className="site-wrap site-header-bar">
         <Link to="/" className="site-logo" aria-label="CityPark home">
           <Logo />

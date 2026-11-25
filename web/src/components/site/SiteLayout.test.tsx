@@ -43,6 +43,15 @@ describe('site layout', () => {
     expect(screen.getByRole('contentinfo')).toBeDefined()
   })
 
+  it('lays the navigation over the hero only on the home page', () => {
+    renderAt('/')
+    expect(screen.getByRole('banner').classList.contains('site-header-over-hero')).toBe(true)
+    cleanup()
+
+    renderAt('/lots')
+    expect(screen.getByRole('banner').classList.contains('site-header-over-hero')).toBe(false)
+  })
+
   it('opens the home page section from another page', () => {
     renderAt('/lots')
 
