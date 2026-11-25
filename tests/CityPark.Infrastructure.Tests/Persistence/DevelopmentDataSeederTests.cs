@@ -18,10 +18,10 @@ public sealed class DevelopmentDataSeederTests(PostgresFixture fixture) : IClass
         var ct = TestContext.Current.CancellationToken;
         await using var provider = await ProviderForNewDatabaseAsync("seed_twice", ct);
 
-        await provider.SeedDevelopmentDataAsync(new TestHostEnvironment(Environments.Development), ct);
+        await provider.SeedDevelopmentDataAsync(new TestHostEnvironment(Environments.Development), enabledOutsideDevelopment: false, ct);
         var afterFirstRun = await CountRowsAsync("seed_twice", ct);
 
-        await provider.SeedDevelopmentDataAsync(new TestHostEnvironment(Environments.Development), ct);
+        await provider.SeedDevelopmentDataAsync(new TestHostEnvironment(Environments.Development), enabledOutsideDevelopment: false, ct);
         var afterSecondRun = await CountRowsAsync("seed_twice", ct);
 
         Assert.Equal((Lots: 3, Spaces: 62), afterFirstRun);
@@ -34,7 +34,7 @@ public sealed class DevelopmentDataSeederTests(PostgresFixture fixture) : IClass
         var ct = TestContext.Current.CancellationToken;
         await using var provider = await ProviderForNewDatabaseAsync("seed_values", ct);
 
-        await provider.SeedDevelopmentDataAsync(new TestHostEnvironment(Environments.Development), ct);
+        await provider.SeedDevelopmentDataAsync(new TestHostEnvironment(Environments.Development), enabledOutsideDevelopment: false, ct);
 
         await using var db = fixture.CreateDbContext("seed_values");
         var lots = await db.ParkingLots.Include(l => l.Spaces).OrderBy(l => l.Name).ToListAsync(ct);
@@ -63,9 +63,21 @@ public sealed class DevelopmentDataSeederTests(PostgresFixture fixture) : IClass
         var database = $"seed_{environmentName.ToLowerInvariant()}";
         await using var provider = await ProviderForNewDatabaseAsync(database, ct);
 
-        await provider.SeedDevelopmentDataAsync(new TestHostEnvironment(environmentName), ct);
+        await provider.SeedDevelopmentDataAsync(new TestHostEnvironment(environmentName), enabledOutsideDevelopment: false, ct);
 
         Assert.Equal((Lots: 0, Spaces: 0), await CountRowsAsync(database, ct));
+    }
+
+    // The Compose app profile runs Production with DemoData__Enabled=true.
+    [Fact]
+    public async Task Seed_InProductionWhenEnabled_AddsTheDemoLots()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var provider = await ProviderForNewDatabaseAsync("seed_enabled", ct);
+
+        await provider.SeedDevelopmentDataAsync(new TestHostEnvironment(Environments.Production), enabledOutsideDevelopment: true, ct);
+
+        Assert.Equal((Lots: 3, Spaces: 62), await CountRowsAsync("seed_enabled", ct));
     }
 
     // Same registration as the API (AddInfrastructure), pointed at a new database migrated to the latest schema.
