@@ -66,6 +66,8 @@ function AvailabilityView({ lot }: { lot: Lot }) {
   const availability = useAvailability(lot.id, submitted)
   const spaceId = checkedInUrl ? params.get('space') : null
   const space = availability.data?.freeSpaces.find((free) => free.id === spaceId) ?? null
+  // A space kept in the URL (after login or a reload) may have been booked meanwhile.
+  const spaceGone = spaceId !== null && availability.isSuccess && !availability.isFetching && space === null
   const booking = useCreateReservation(lot.id)
   const navigate = useNavigate()
   const location = useLocation()
@@ -162,6 +164,11 @@ function AvailabilityView({ lot }: { lot: Lot }) {
               {SPACE_TAKEN}
             </p>
           )}
+          {spaceGone && !booking.data && (
+            <p role="alert" className="lot-alert lot-spaces">
+              {SPACE_GONE}
+            </p>
+          )}
           {availability.data && !availability.isFetching && (
             <SpaceGrid availability={availability.data} selectedId={space?.id ?? null} onSelect={choose} />
           )}
@@ -200,6 +207,8 @@ function AvailabilityView({ lot }: { lot: Lot }) {
     </>
   )
 }
+
+export const SPACE_GONE = 'The space you chose is no longer free for this time. Please pick another one.'
 
 // The first hour after opening, or less if the lot closes sooner.
 function defaultInterval(lot: Lot): Interval {
