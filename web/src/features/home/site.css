@@ -39,6 +39,44 @@
   letter-spacing: -0.02em;
 }
 
+.site-sec {
+  padding: 96px 0 0;
+  background: #ffffff;
+}
+
+.site-eyebrow {
+  margin: 0 0 14px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.site-h2 {
+  max-width: 640px;
+  margin: 0;
+  color: var(--ink);
+  font-size: 40px;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+
+.site-sub {
+  max-width: 540px;
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.site-card {
+  border: 1.5px solid var(--line);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 3px 5px rgba(11, 16, 36, 0.07);
+}
+
 .site-btn {
   display: inline-flex;
   align-items: center;
@@ -99,6 +137,14 @@
 @media (max-width: 899px) {
   .site-wrap {
     padding: 0 24px;
+  }
+
+  .site-sec {
+    padding-top: 72px;
+  }
+
+  .site-h2 {
+    font-size: 32px;
   }
 }
 

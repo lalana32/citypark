@@ -1,0 +1,169 @@
+.site-locations {
+  padding-top: 88px;
+}
+
+.loc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  margin: 48px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.loc-card {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.loc-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(11, 16, 36, 0.1);
+}
+
+.loc-photo {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  border-radius: 12px;
+  background: #f3f5fa;
+}
+
+.loc-photo svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.loc-pill {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(11, 16, 36, 0.82);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.loc-pill i {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.loc-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 8px 8px;
+}
+
+.loc-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.loc-name {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.loc-address {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.loc-address svg {
+  flex: none;
+}
+
+.loc-price {
+  flex: none;
+  margin: 0;
+  text-align: right;
+}
+
+.loc-price b {
+  display: block;
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+.loc-price span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.loc-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.loc-tile {
+  padding: 12px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+}
+
+.loc-tile dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.loc-tile dd {
+  margin: 4px 0 0;
+  font-size: 22px;
+}
+
+.loc-view {
+  width: 100%;
+  height: 52px;
+  margin-top: auto;
+}
+
+@media (max-width: 1000px) {
+  .loc-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .loc-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loc-card {
+    transition: none;
+  }
+
+  .loc-card:hover {
+    transform: none;
+  }
+}

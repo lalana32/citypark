@@ -1,9 +1,23 @@
+import { useState } from 'react'
 import { Link } from 'react-router'
 import { AnimatedCityMap } from './cityMap/AnimatedCityMap'
+import { DEMO_LOTS } from './demoLots'
+import { LocationsSection } from './LocationsSection'
 import './home.css'
 
-/** Public landing page: hero with the animated city map as its background. */
+/** Public landing page: the hero with the animated city map, then the browsing sections. */
 export function HomePage() {
+  const [, setLotId] = useState(DEMO_LOTS[0].id)
+
+  return (
+    <>
+      <Hero />
+      <LocationsSection onViewLot={setLotId} />
+    </>
+  )
+}
+
+function Hero() {
   return (
     <section className="hero" aria-labelledby="hero-title">
       <AnimatedCityMap className="hero-map" />
