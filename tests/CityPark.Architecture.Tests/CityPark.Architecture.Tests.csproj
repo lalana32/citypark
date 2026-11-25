@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- xUnit v3 test projects are executables run by Microsoft.Testing.Platform (docs/decisions.md). -->
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NetArchTest.Rules" Version="1.3.2" />
+    <PackageReference Include="xunit.v3" Version="4.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <!-- Only the layers under test; the forbidden layers are checked by namespace and assembly name. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\CityPark.Application\CityPark.Application.csproj" />
+    <ProjectReference Include="..\..\src\CityPark.Domain\CityPark.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
