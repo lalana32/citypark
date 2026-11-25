@@ -23,13 +23,13 @@ export function SummaryPanel({ lotName, checked, spaceLabel, quote, children }: 
 
       {checked ? (
         <dl className="lot-summary-list">
-          <Row term="Lot">{lotName}</Row>
-          <Row term="Space">{spaceLabel ?? 'Not chosen yet'}</Row>
-          <Row term="Date">{formatDate(checked.date)}</Row>
-          <Row term="Arrival">{checked.start}</Row>
-          <Row term="Departure">{checked.end}</Row>
-          <Row term="Duration">{formatDuration(checked.start, checked.end)}</Row>
-          <Row term="Price">
+          <SummaryRow term="Lot">{lotName}</SummaryRow>
+          <SummaryRow term="Space">{spaceLabel ?? 'Not chosen yet'}</SummaryRow>
+          <SummaryRow term="Date">{formatDate(checked.date)}</SummaryRow>
+          <SummaryRow term="Arrival">{checked.start}</SummaryRow>
+          <SummaryRow term="Departure">{checked.end}</SummaryRow>
+          <SummaryRow term="Duration">{formatDuration(checked.start, checked.end)}</SummaryRow>
+          <SummaryRow term="Price">
             {quote.data ? (
               <>
                 <strong className="lot-summary-price">{formatPrice(quote.data)}</strong>{' '}
@@ -40,7 +40,7 @@ export function SummaryPanel({ lotName, checked, spaceLabel, quote, children }: 
             ) : (
               'Calculating…'
             )}
-          </Row>
+          </SummaryRow>
         </dl>
       ) : (
         <p className="lot-summary-hint">Pick a time and check availability, then choose a free space.</p>
@@ -51,7 +51,7 @@ export function SummaryPanel({ lotName, checked, spaceLabel, quote, children }: 
   )
 }
 
-function Row({ term, children }: { term: string; children: ReactNode }) {
+export function SummaryRow({ term, children }: { term: string; children: ReactNode }) {
   return (
     <div className="lot-summary-row">
       <dt>{term}</dt>
