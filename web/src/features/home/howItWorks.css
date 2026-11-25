@@ -1,0 +1,102 @@
+.steps {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 40px;
+  margin: 56px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Dashed track that links the step numbers. */
+.steps::before {
+  content: '';
+  position: absolute;
+  top: 21px;
+  right: 0;
+  left: 22px;
+  border-top: 2.5px dashed var(--line-strong);
+}
+
+.step {
+  position: relative;
+}
+
+.step-mark {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  outline: 12px solid #ffffff;
+  background: var(--ink);
+  color: var(--primary);
+  font-size: 18px;
+}
+
+.step-title {
+  margin: 24px 0 8px;
+  font-size: 22px;
+}
+
+.step-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.step-tag {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 4px 10px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.step-tag-account {
+  border-color: var(--accent);
+  color: #2e43a3;
+}
+
+@media (max-width: 1000px) {
+  .steps {
+    gap: 24px;
+  }
+}
+
+@media (max-width: 700px) {
+  .steps {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 36px;
+  }
+
+  .steps::before {
+    top: 22px;
+    right: auto;
+    bottom: 30px;
+    left: 22px;
+    border-top: 0;
+    border-left: 2.5px dashed var(--line-strong);
+  }
+
+  .step {
+    padding-left: 68px;
+  }
+
+  .step-mark {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  .step-title {
+    margin-top: 8px;
+  }
+}
