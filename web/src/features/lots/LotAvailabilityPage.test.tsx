@@ -2,10 +2,10 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { CENTAR, createTestQueryClient, problem, type Route as ApiRoute, stubApi } from '../../test/apiStub'
+import { availabilityOf, CENTAR, createTestQueryClient, problem, type Route as ApiRoute, stubApi } from '../../test/apiStub'
 import { LOT_NOT_FOUND, UNEXPECTED_ERROR } from './api'
 import { LotAvailabilityPage } from './LotAvailabilityPage'
-import { NO_FREE_SPACES } from './SpaceGrid'
+import { NO_FREE_SPACES } from './SpacePlan'
 import { QUOTE_FAILED } from './SummaryPanel'
 
 afterEach(() => {
@@ -44,20 +44,14 @@ function summaryRow(term: string): string | null {
   return dt?.nextElementSibling?.textContent ?? null
 }
 
-function availability(freeSpaces: { id: string; label: string }[]) {
-  return Response.json({
-    lotId: CENTAR.id,
-    start: '2026-12-01T07:00:00+01:00',
-    end: '2026-12-01T08:00:00+01:00',
-    totalSpaces: CENTAR.totalSpaces,
-    availableSpaces: freeSpaces.length,
-    freeSpaces,
-  })
-}
-
 const TWO_SPACES = [
   { id: '019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e02', label: 'A-02' },
   { id: '019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e03', label: 'A-03' },
+]
+
+const OCCUPIED = [
+  { id: '019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e01', label: 'A-01' },
+  { id: '019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e04', label: 'A-04' },
 ]
 
 function CurrentUrl() {
@@ -95,16 +89,18 @@ async function check() {
 }
 
 describe('LotAvailabilityPage', () => {
-  it('shows the free spaces for the chosen interval in lot time', async () => {
-    const fetchMock = stubApi(
-      routes(() => availability([{ id: '019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e02', label: 'A-02' }])),
-    )
+  it('draws the plan for the chosen interval in lot time, with only the free space selectable', async () => {
+    const fetchMock = stubApi(routes(() => availabilityOf([TWO_SPACES[0]], OCCUPIED)))
     renderPage()
 
     await check()
 
-    expect(await screen.findByText('1 of 30 spaces free')).toBeDefined()
+    expect(await screen.findByRole('img', { name: 'Plan of Centar: 3 spaces, 1 available' })).toBeDefined()
     expect(screen.getByRole('button', { name: 'Space A-02' }).getAttribute('aria-pressed')).toBe('false')
+    // Occupied spaces are drawn with their label but are not buttons.
+    expect(screen.getByText('A-01')).toBeDefined()
+    expect(screen.queryByRole('button', { name: 'Space A-01' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Space A-04' })).toBeNull()
     const request = fetchMock.mock.calls.at(-1)![0] as Request
     const query = new URL(request.url).searchParams
     expect(query.get('start')).toMatch(/T07:00:00\+0[12]:00$/)
@@ -112,7 +108,7 @@ describe('LotAvailabilityPage', () => {
   })
 
   it('says so clearly when no space is free', async () => {
-    stubApi(routes(() => availability([])))
+    stubApi(routes(() => availabilityOf([])))
     renderPage()
 
     await check()
@@ -122,8 +118,8 @@ describe('LotAvailabilityPage', () => {
     expect(screen.queryByRole('button', { name: /^Space / })).toBeNull()
   })
 
-  it('highlights the chosen space and only that one', async () => {
-    stubApi(routes(() => availability(TWO_SPACES)))
+  it('highlights the chosen space and only that one, in the panel and the URL too', async () => {
+    stubApi(routes(() => availabilityOf(TWO_SPACES)))
     renderPage()
 
     await check()
@@ -132,10 +128,13 @@ describe('LotAvailabilityPage', () => {
 
     expect(screen.getByRole('button', { name: 'Space A-02' }).getAttribute('aria-pressed')).toBe('false')
     expect(screen.getByRole('button', { name: 'Space A-03' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('img', { name: 'Plan of Centar: 2 spaces, 2 available, space A-03 selected' })).toBeDefined()
+    expect(summaryRow('Space')).toBe('A-03')
+    expect(currentUrl()).toContain(`space=${TWO_SPACES[1].id}`)
   })
 
   it('drops the spaces and the choice when the time changes', async () => {
-    stubApi(routes(() => availability(TWO_SPACES)))
+    stubApi(routes(() => availabilityOf(TWO_SPACES)))
     renderPage()
 
     await check()
@@ -149,7 +148,7 @@ describe('LotAvailabilityPage', () => {
   })
 
   it('keeps the checked time and the chosen space after a reload', async () => {
-    stubApi(routes(() => availability(TWO_SPACES), quoteOf(5, 2)))
+    stubApi(routes(() => availabilityOf(TWO_SPACES), quoteOf(5, 2)))
     renderPage()
 
     fireEvent.change(await screen.findByLabelText('From'), { target: { value: '10:00' } })
@@ -169,7 +168,7 @@ describe('LotAvailabilityPage', () => {
   })
 
   it('falls back to the default time when the URL holds an invalid one', async () => {
-    stubApi(routes(() => availability(TWO_SPACES)))
+    stubApi(routes(() => availabilityOf(TWO_SPACES)))
     renderPage(`/lots/${CENTAR.id}?date=2026-12-01&start=10:10&end=11:00&space=${TWO_SPACES[0].id}`)
 
     expect(await screen.findByText('Pick a time and check availability, then choose a free space.')).toBeDefined()
@@ -213,7 +212,7 @@ describe('LotAvailabilityPage', () => {
   })
 
   it('fills the panel with the chosen space, the times and the price from the quote', async () => {
-    const fetchMock = stubApi(routes(() => availability(TWO_SPACES), quoteOf(2.5, 1)))
+    const fetchMock = stubApi(routes(() => availabilityOf(TWO_SPACES), quoteOf(2.5, 1)))
     renderPage()
 
     expect(await screen.findByText('Pick a time and check availability, then choose a free space.')).toBeDefined()
@@ -233,7 +232,7 @@ describe('LotAvailabilityPage', () => {
   })
 
   it('says so in the panel when the price cannot be loaded', async () => {
-    stubApi(routes(() => availability(TWO_SPACES), () => new Response(null, { status: 500 })))
+    stubApi(routes(() => availabilityOf(TWO_SPACES), () => new Response(null, { status: 500 })))
     renderPage()
 
     await check()
@@ -252,8 +251,8 @@ describe('LotAvailabilityPage', () => {
 
     expect((await screen.findByRole('status')).textContent).toBe('Checking availability…')
     expect((screen.getByRole('button', { name: 'Check availability' }) as HTMLButtonElement).disabled).toBe(true)
-    answer(availability(TWO_SPACES))
-    expect(await screen.findByText('2 of 30 spaces free')).toBeDefined()
+    answer(availabilityOf(TWO_SPACES))
+    expect(await screen.findByRole('img', { name: 'Plan of Centar: 2 spaces, 2 available' })).toBeDefined()
     expect(screen.queryByRole('status')).toBeNull()
   })
 
