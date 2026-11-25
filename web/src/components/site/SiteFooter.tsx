@@ -25,7 +25,7 @@ export function SiteFooter() {
                 <Link to="/">Home</Link>
               </li>
               <li>
-                <Link to="/#locations">Parking lots</Link>
+                <Link to="/lots">Parking lots</Link>
               </li>
               <li>
                 <Link to="/#how-it-works">How it works</Link>

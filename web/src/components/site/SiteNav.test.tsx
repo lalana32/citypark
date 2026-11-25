@@ -33,7 +33,7 @@ describe('site navigation', () => {
       .map((link) => [link.textContent, link.getAttribute('href')])
     expect(links).toEqual([
       ['Home', '/'],
-      ['Parking lots', '/#locations'],
+      ['Parking lots', '/lots'],
       ['How it works', '/#how-it-works'],
       ['Contact', '/#contact'],
     ])
@@ -70,7 +70,7 @@ describe('site navigation', () => {
     const mobileNav = within(screen.getByRole('navigation', { name: 'Main mobile' }))
     expect(mobileNav.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
       '/',
-      '/#locations',
+      '/lots',
       '/reservations',
     ])
     expect(mobileNav.getByRole('button', { name: 'Log out' })).toBeDefined()

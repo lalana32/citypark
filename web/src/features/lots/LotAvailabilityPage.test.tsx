@@ -293,7 +293,7 @@ describe('LotAvailabilityPage', () => {
     expect(screen.getByText('Ferhadija 1')).toBeDefined()
     expect(screen.getByText('2.50 BAM / hour')).toBeDefined()
     expect(screen.getByText('07:00–22:00')).toBeDefined()
-    expect(screen.getByRole('link', { name: '← Back to parking lots' }).getAttribute('href')).toBe('/#locations')
+    expect(screen.getByRole('link', { name: '← Back to parking lots' }).getAttribute('href')).toBe('/lots')
   })
 
   it('says when the lot does not exist and links back to the lots', async () => {

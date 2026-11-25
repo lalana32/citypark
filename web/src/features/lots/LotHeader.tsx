@@ -1,7 +1,7 @@
 import { Link } from 'react-router'
 import { formatRate, formatWindow, type Lot } from './api'
 
-export const BACK_TO_LOTS = '/#locations'
+export const BACK_TO_LOTS = '/lots'
 
 export function LotHeader({ lot }: { lot: Lot }) {
   return (
