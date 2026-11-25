@@ -107,15 +107,26 @@ describe('LotAvailabilityPage', () => {
     expect(query.get('end')).toMatch(/T08:00:00\+0[12]:00$/)
   })
 
-  it('says so clearly when no space is free', async () => {
-    stubApi(routes(() => availabilityOf([])))
+  it('says so clearly when no space is free and still draws the full lot', async () => {
+    stubApi(routes(() => availabilityOf([], OCCUPIED)))
     renderPage()
 
     await check()
 
     expect(await screen.findByText(NO_FREE_SPACES)).toBeDefined()
     expect(screen.getByText('Try an earlier or later time, or another date.')).toBeDefined()
+    expect(screen.getByRole('img', { name: 'Plan of Centar: 2 spaces, 0 available' })).toBeDefined()
     expect(screen.queryByRole('button', { name: /^Space / })).toBeNull()
+  })
+
+  it('tells phone users the plan scrolls sideways', async () => {
+    stubApi(routes(() => availabilityOf(TWO_SPACES)))
+    renderPage()
+
+    await check()
+
+    // CSS shows the hint only below 700 px; jsdom renders it regardless.
+    expect(await screen.findByText('Scroll the plan sideways to see all spaces.')).toBeDefined()
   })
 
   it('highlights the chosen space and only that one, in the panel and the URL too', async () => {

@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ParkingPlan } from './ParkingPlan'
-import { aisleCount, type PlanSpace, planHeight, spaceBox } from './planLayout'
+import { aisleCount, type PlanSpace, planHeight, SPACE_H, SPACE_W, spaceBox, VIEW_W } from './planLayout'
 
 afterEach(cleanup)
 
@@ -53,6 +53,25 @@ describe('ParkingPlan', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Space A-01' }))
 
     expect(onSelect).toHaveBeenCalledWith('1')
+  })
+
+  it.each([12, 20, 30])('draws a lot of %i spaces completely, inside the drawing', (count) => {
+    // Every third space is occupied.
+    const lot: PlanSpace[] = Array.from({ length: count }, (_, index) => {
+      const label = `A-${String(index + 1).padStart(2, '0')}`
+      return { id: label, label, state: index % 3 === 0 ? 'occupied' : 'free' }
+    })
+    render(<ParkingPlan title="Centar" spaces={lot} onSelect={() => {}} />)
+
+    for (const space of lot) {
+      expect(screen.getByText(space.label)).toBeDefined()
+    }
+    expect(screen.getAllByRole('button')).toHaveLength(lot.filter((space) => space.state === 'free').length)
+    lot.forEach((_, index) => {
+      const { x, y } = spaceBox(index)
+      expect(x + SPACE_W).toBeLessThanOrEqual(VIEW_W)
+      expect(y + SPACE_H).toBeLessThanOrEqual(planHeight(count))
+    })
   })
 
   it('puts each button on its space in percent of the drawing', () => {
