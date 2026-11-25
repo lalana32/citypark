@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CENTAR, createTestQueryClient, problem, type Route as ApiRoute, stubApi } from '../../test/apiStub'
-import { LOT_NOT_FOUND } from './api'
+import { LOT_NOT_FOUND, UNEXPECTED_ERROR } from './api'
 import { LotAvailabilityPage } from './LotAvailabilityPage'
 import { NO_FREE_SPACES } from './SpaceGrid'
 import { QUOTE_FAILED } from './SummaryPanel'
@@ -192,6 +192,31 @@ describe('LotAvailabilityPage', () => {
 
     expect(await screen.findByText(QUOTE_FAILED)).toBeDefined()
     expect(screen.getByRole('button', { name: 'Space A-02' })).toBeDefined()
+  })
+
+  it('shows a loading state while the free spaces load', async () => {
+    let answer!: (response: Response) => void
+    const pending = new Promise<Response>((resolve) => (answer = resolve))
+    stubApi(routes(() => pending as unknown as Response))
+    renderPage()
+
+    await check()
+
+    expect((await screen.findByRole('status')).textContent).toBe('Checking availability…')
+    expect((screen.getByRole('button', { name: 'Check availability' }) as HTMLButtonElement).disabled).toBe(true)
+    answer(availability(TWO_SPACES))
+    expect(await screen.findByText('2 of 30 spaces free')).toBeDefined()
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('shows a general error when the free spaces cannot be loaded', async () => {
+    stubApi(routes(() => new Response(null, { status: 500 })))
+    renderPage()
+
+    await check()
+
+    expect((await screen.findByRole('alert')).textContent).toBe(UNEXPECTED_ERROR)
+    expect(screen.queryByRole('button', { name: /^Space / })).toBeNull()
   })
 
   it('shows a loading state while the lot loads', async () => {
