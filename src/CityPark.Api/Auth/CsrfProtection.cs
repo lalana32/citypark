@@ -17,10 +17,9 @@ public static class CsrfProtection
     private const string InvalidTokenDetail =
         $"The {HeaderName} header is missing or invalid. Get a token from GET /api/v1/auth/csrf.";
 
-    public static IServiceCollection AddCityParkCsrfProtection(this IServiceCollection services, IHostEnvironment environment)
+    public static IServiceCollection AddCityParkCsrfProtection(this IServiceCollection services, CookieSecurePolicy securePolicy)
     {
         ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(environment);
 
         services.AddAntiforgery(options =>
         {
@@ -28,9 +27,7 @@ public static class CsrfProtection
             options.Cookie.Name = CookieName;
             options.Cookie.HttpOnly = true;
             options.Cookie.SameSite = SameSiteMode.Strict;
-            options.Cookie.SecurePolicy = environment.IsDevelopment()
-                ? CookieSecurePolicy.SameAsRequest
-                : CookieSecurePolicy.Always;
+            options.Cookie.SecurePolicy = securePolicy;
         });
 
         return services;

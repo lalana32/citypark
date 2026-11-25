@@ -10,10 +10,9 @@ public static class AuthSetup
 {
     public const string CookieName = "citypark.auth";
 
-    public static IServiceCollection AddCityParkAuthentication(this IServiceCollection services, IHostEnvironment environment)
+    public static IServiceCollection AddCityParkAuthentication(this IServiceCollection services, CookieSecurePolicy securePolicy)
     {
         ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(environment);
 
         services.AddAuthentication(IdentityConstants.ApplicationScheme).AddIdentityCookies();
 
@@ -34,10 +33,7 @@ public static class AuthSetup
             options.Cookie.Name = CookieName;
             options.Cookie.HttpOnly = true;
             options.Cookie.SameSite = SameSiteMode.Strict;
-            // The Vite dev server proxies over plain HTTP; every other environment is HTTPS only.
-            options.Cookie.SecurePolicy = environment.IsDevelopment()
-                ? CookieSecurePolicy.SameAsRequest
-                : CookieSecurePolicy.Always;
+            options.Cookie.SecurePolicy = securePolicy;
             options.ExpireTimeSpan = TimeSpan.FromHours(8);
             options.SlidingExpiration = true;
 
