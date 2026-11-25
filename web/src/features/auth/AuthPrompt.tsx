@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react'
 import { Link } from 'react-router'
 import { Logo } from '../../components/site/Logo'
+import { useModalDialog } from '../../components/useModalDialog'
 import { withReturnTo } from './returnTo'
 import './authPrompt.css'
 
@@ -12,22 +12,7 @@ type Props = {
 
 /** Modal shown to a guest who tries to reserve: sign-in is asked for only at this step. */
 export function AuthPrompt({ returnTo, onClose }: Props) {
-  const dialog = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const root = dialog.current
-    root?.querySelector<HTMLElement>('a, button')?.focus()
-
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose()
-      } else if (event.key === 'Tab' && root) {
-        keepFocusInside(root, event)
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+  const dialog = useModalDialog(onClose)
 
   return (
     <div
@@ -67,18 +52,4 @@ export function AuthPrompt({ returnTo, onClose }: Props) {
       </div>
     </div>
   )
-}
-
-function keepFocusInside(root: HTMLElement, event: KeyboardEvent) {
-  const items = Array.from(root.querySelectorAll<HTMLElement>('a, button'))
-  const first = items[0]
-  const last = items[items.length - 1]
-
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault()
-    last.focus()
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault()
-    first.focus()
-  }
 }
