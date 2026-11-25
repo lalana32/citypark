@@ -167,3 +167,7 @@
     transform: none;
   }
 }
+
+.loc-pill-closed i {
+  background: var(--muted);
+}

@@ -15,7 +15,7 @@ export function SiteFooter() {
               <Logo />
               <span className="site-display">CityPark</span>
             </Link>
-            <p className="footer-about">Parking space reservations at three locations.</p>
+            <p className="footer-about">Parking space reservations across the city.</p>
           </div>
 
           <nav aria-label="Footer">
