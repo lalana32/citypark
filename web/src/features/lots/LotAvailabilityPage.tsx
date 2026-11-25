@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import {
   AvailabilityError,
   type Lot,
@@ -9,7 +9,7 @@ import {
   useLot,
   useQuote,
 } from './api'
-import { addMinutes, type Interval, lotToday, quarterHours, STEP_MINUTES, toLotInstant } from './interval'
+import { addMinutes, type Interval, lotToday, quarterHours, readInterval, STEP_MINUTES, toLotInstant } from './interval'
 import { IntervalPicker } from './IntervalPicker'
 import { BACK_TO_LOTS, LotHeader } from './LotHeader'
 import { type FreeSpace, SpaceGrid } from './SpaceGrid'
@@ -51,28 +51,38 @@ export function LotAvailabilityPage() {
 }
 
 function AvailabilityView({ lot }: { lot: Lot }) {
-  const [value, setValue] = useState<Interval>(() => defaultInterval(lot))
-  const [submitted, setSubmitted] = useState<{ start: string; end: string } | null>(null)
+  // The URL holds the checked interval and the chosen space, so a reload or a return keeps them.
+  const [params, setParams] = useSearchParams()
+  const checkedInUrl = readInterval(params, lot)
+  const [value, setValue] = useState<Interval>(() => checkedInUrl ?? defaultInterval(lot))
+  const submitted = checkedInUrl && {
+    start: toLotInstant(checkedInUrl.date, checkedInUrl.start),
+    end: toLotInstant(checkedInUrl.date, checkedInUrl.end),
+  }
   const availability = useAvailability(lot.id, submitted)
-  const [space, setSpace] = useState<FreeSpace | null>(null)
+  const spaceId = checkedInUrl ? params.get('space') : null
+  const space = availability.data?.freeSpaces.find((free) => free.id === spaceId) ?? null
   const booking = useCreateReservation(lot.id)
   const navigate = useNavigate()
   const location = useLocation()
 
-  // `value` still matches `submitted` here: changing it clears the check.
-  const checked = availability.isSuccess ? value : null
+  const checked = availability.isSuccess ? checkedInUrl : null
   const quote = useQuote(lot.id, checked && submitted)
   const errors = availability.error instanceof AvailabilityError ? availability.error.errors : undefined
 
+  function show(interval: Interval | null, nextSpaceId: string | null = null) {
+    setParams(interval ? { ...interval, ...(nextSpaceId ? { space: nextSpaceId } : {}) } : {}, { replace: true })
+  }
+
   function submit(event: FormEvent) {
     event.preventDefault()
-    setSubmitted({ start: toLotInstant(value.date, value.start), end: toLotInstant(value.date, value.end) })
-    choose(null)
+    booking.reset()
+    show(value)
   }
 
   function choose(next: FreeSpace | null) {
     booking.reset()
-    setSpace(next)
+    show(checkedInUrl, next?.id)
   }
 
   function book(plate: string) {
@@ -82,10 +92,12 @@ function AvailabilityView({ lot }: { lot: Lot }) {
     booking.mutate(
       { spaceId: space.id, ...submitted, plate },
       {
+        // The space is booked now, so it no longer belongs in the URL.
+        onSuccess: () => show(checkedInUrl),
         onError: (error) => {
           if (error instanceof SpaceTakenError) {
             // The hook has already refreshed the free spaces; this one is gone.
-            setSpace(null)
+            show(checkedInUrl)
           } else if (error instanceof SignedOutError) {
             void navigate('/login', { state: { from: location, sessionEnded: true } })
           }
@@ -97,8 +109,8 @@ function AvailabilityView({ lot }: { lot: Lot }) {
   function change(next: Interval) {
     setValue(next)
     // The old answer belongs to the old interval.
-    setSubmitted(null)
-    choose(null)
+    booking.reset()
+    show(null)
   }
 
   return (
@@ -147,7 +159,12 @@ function AvailabilityView({ lot }: { lot: Lot }) {
           )}
         </div>
 
-        <SummaryPanel lotName={lot.name} checked={checked} spaceLabel={space?.label ?? null} quote={quote}>
+        <SummaryPanel
+          lotName={lot.name}
+          checked={checked}
+          spaceLabel={booking.data?.spaceLabel ?? space?.label ?? null}
+          quote={quote}
+        >
           {booking.data ? (
             <BookingSuccess reservation={booking.data} />
           ) : (

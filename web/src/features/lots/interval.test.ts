@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDate, formatDuration, formatLotDateTime, isOpenFor, nextSlot, quarterHours, toLotInstant } from './interval'
+import { formatDate, formatDuration, formatLotDateTime, isOpenFor, nextSlot, quarterHours, readInterval, toLotInstant } from './interval'
 
 describe('quarterHours', () => {
   it('lists every quarter hour of the window, both ends included', () => {
@@ -73,5 +73,22 @@ describe('formatDuration', () => {
 describe('formatDate', () => {
   it('shows a lot date without moving it to another day', () => {
     expect(formatDate('2026-12-01')).toBe('1 Dec 2026')
+  })
+})
+
+describe('readInterval', () => {
+  const lot = { opensAt: '07:00:00', closesAt: '22:00:00' }
+  const read = (query: string) => readInterval(new URLSearchParams(query), lot)
+
+  it('reads back a slot the picker offers', () => {
+    expect(read('date=2026-12-01&start=10:00&end=11:30')).toEqual({ date: '2026-12-01', start: '10:00', end: '11:30' })
+  })
+
+  it('ignores a missing part, a day that does not exist and times off the grid or outside the hours', () => {
+    expect(read('date=2026-12-01&start=10:00')).toBeNull()
+    expect(read('date=2026-02-31&start=10:00&end=11:00')).toBeNull()
+    expect(read('date=2026-12-01&start=10:10&end=11:00')).toBeNull()
+    expect(read('date=2026-12-01&start=21:00&end=22:15')).toBeNull()
+    expect(read('date=2026-12-01&start=11:00&end=10:00')).toBeNull()
   })
 })

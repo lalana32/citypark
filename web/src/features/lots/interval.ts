@@ -88,6 +88,27 @@ export function isOpenFor(lot: { opensAt: string; closesAt: string }, interval: 
   )
 }
 
+/** Reads ?date=&start=&end= back; null unless it is a real day and a slot the picker offers. */
+export function readInterval(params: URLSearchParams, lot: { opensAt: string; closesAt: string }): Interval | null {
+  const date = params.get('date') ?? ''
+  const start = params.get('start') ?? ''
+  const end = params.get('end') ?? ''
+  const starts = quarterHours(lot.opensAt, addMinutes(lot.closesAt, -STEP_MINUTES))
+  if (!isDate(date) || !starts.includes(start) || !quarterHours(addMinutes(start, STEP_MINUTES), lot.closesAt).includes(end)) {
+    return null
+  }
+  return { date, start, end }
+}
+
+// Round-trips through UTC, so "2026-02-31" is rejected.
+function isDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false
+  }
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, day)).toISOString().slice(0, 10) === value
+}
+
 /** "10:00" to "11:15" -> "1 h 15 min". */
 export function formatDuration(start: string, end: string): string {
   const total = toMinutes(end) - toMinutes(start)
