@@ -1,0 +1,109 @@
+/* Shared look for the public home page sections (everything except the hero). */
+.site {
+  --ink: #0b1024;
+  --muted: #5b6788;
+  --accent: #3e63d8;
+  --primary: #8db1ff;
+  --primary-hover: #a6c2ff;
+  --line: #e4e9f2;
+  --line-strong: #d3dae8;
+  --night: #06080f;
+  --night-text: #b4bee6;
+  --night-line: #2e3a78;
+
+  position: relative;
+  min-height: 100vh;
+  background: #ffffff;
+  color: var(--ink);
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* The hero keeps its own box model (CP-039 hero rule). */
+.site :not(.hero, .hero *),
+.site :not(.hero, .hero *)::before,
+.site :not(.hero, .hero *)::after {
+  box-sizing: border-box;
+}
+
+.site-wrap {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+
+.site-display {
+  font-family: 'Space Grotesk', Inter, ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.site-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 8px;
+  font: 600 15px/1 Inter, ui-sans-serif, system-ui, sans-serif;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.12s ease;
+}
+
+.site-btn:active {
+  transform: translateY(1px);
+}
+
+.site-btn-primary {
+  background: var(--primary);
+  color: var(--ink);
+}
+
+.site-btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+.site-btn-secondary {
+  background: #ffffff;
+  color: var(--ink);
+  border: 1.5px solid var(--line-strong);
+}
+
+.site-btn-secondary:hover {
+  border-color: var(--accent);
+}
+
+.site-btn-small {
+  height: 40px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+
+.site :is(a, button, summary):not(.hero *):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.site .site-dark :is(a, button):focus-visible {
+  outline-color: var(--primary);
+}
+
+@media (max-width: 899px) {
+  .site-wrap {
+    padding: 0 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-btn {
+    transition: none;
+  }
+}

@@ -34,7 +34,7 @@ describe('session', () => {
     stubApi(signedIn)
     renderApp('/')
 
-    expect(await screen.findByText(ANA.email)).toBeDefined()
+    expect(await screen.findByRole('button', { name: 'My account' })).toBeDefined()
     expect(screen.getByRole('heading', { name: 'Stop circling. Start parking.' })).toBeDefined()
   })
 
@@ -42,7 +42,8 @@ describe('session', () => {
     stubApi({ ...csrfRoute, ...signedIn, 'POST /api/v1/auth/logout': () => new Response(null, { status: 204 }) })
     renderApp('/')
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Log out' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'My account' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Log out' }))
 
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeDefined()
     expect(screen.queryByText(ANA.email)).toBeNull()
