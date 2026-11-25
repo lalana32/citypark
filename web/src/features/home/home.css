@@ -1,0 +1,256 @@
+/*
+ * Home page hero: the animated city map as a full-bleed background with the copy on top.
+ * Layer 1: map (.hero-map) · Layer 2: readability scrim · Layer 3: copy.
+ */
+
+/* The layout pads <main>; the hero runs edge to edge instead. */
+main:has(> .hero) {
+  padding: 0;
+}
+
+/* ── Hero ─────────────────────────────────────────
+   Layer 1: animated map (absolute, covers the section)
+   Layer 2: scrim for text readability
+   Layer 3: copy */
+.hero {
+  position: relative;
+  width: 100%;
+  min-height: 820px;
+  overflow: hidden;
+  background: #06080f;
+  display: flex;
+  align-items: center;
+  /* The app's root font is system-ui; the hero copy is set in Inter. */
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.hero-map {
+  position: absolute;
+  inset: 0;
+}
+
+.hero-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(0deg, rgba(6, 8, 15, 0.7) 0%, rgba(6, 8, 15, 0) 20%),
+    linear-gradient(90deg, rgba(6, 8, 15, 0.94) 0%, rgba(6, 8, 15, 0.94) 30%, rgba(6, 8, 15, 0) 64%);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  margin-left: 96px;
+  max-width: 580px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 28px;
+}
+
+.hero-title {
+  margin: 0;
+  font-family: 'Space Grotesk', Inter, ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 62px;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  color: #f2f5ff;
+}
+
+/* One phrase per line */
+.hero-title span {
+  display: block;
+}
+
+.hero-text {
+  margin: 0;
+  max-width: 400px;
+  font-size: 19px;
+  line-height: 1.55;
+  color: #aeb9dc;
+}
+
+.hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  height: 56px;
+  padding: 0 28px;
+  border-radius: 6px;
+  background: #8db1ff;
+  color: #06080f;
+  font: 600 17px/1 Inter, ui-sans-serif, system-ui, sans-serif;
+  text-decoration: none;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.hero-cta:hover {
+  background: #a6c2ff;
+}
+
+.hero-cta:active {
+  transform: translateY(1px);
+}
+
+.hero-cta:focus-visible {
+  outline: 2px solid #f2f5ff;
+  outline-offset: 3px;
+}
+
+@media (max-width: 899px) {
+  .hero {
+    align-items: flex-start;
+    min-height: 760px;
+  }
+
+  .hero-content {
+    margin: 0;
+    width: 100%;
+    max-width: none;
+    padding: 72px 24px 24px;
+    gap: 24px;
+  }
+
+  .hero-title {
+    font-size: 40px;
+  }
+
+  .hero-text {
+    font-size: 17px;
+  }
+
+  /* Text sits on top, so the scrim becomes vertical: strongest at the top. */
+  .hero-scrim {
+    background:
+      linear-gradient(0deg, rgba(6, 8, 15, 0.7) 0%, rgba(6, 8, 15, 0) 20%),
+      linear-gradient(180deg, rgba(6, 8, 15, 0.94) 0%, rgba(6, 8, 15, 0.9) 38%, rgba(6, 8, 15, 0) 62%);
+  }
+}
+
+/* ── Map frame, loading → ready ──────────────────
+   The map is in the HTML from the first byte but stays hidden until the animation
+   is running (useCityAnimation sets data-ready), so nobody sees a frozen map.
+   Pure CSS, so it works before any JavaScript has loaded. */
+.city-map-frame {
+  overflow: hidden;
+  background: #06080f;
+}
+
+.city-map-layer {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transform: scale(1.03);
+  /* Safety net: if the script never runs, still show the (static) map. */
+  animation: map-fallback-reveal 0.8s ease-out 6s forwards;
+}
+
+/* The street network never changes: give it its own compositing layer so the
+   moving markers above it never force the streets to repaint. */
+.city-map-static {
+  will-change: transform;
+}
+
+.city-map-frame[data-ready] .city-map-layer {
+  animation: none;
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.9s ease-out,
+    transform 1.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@keyframes map-fallback-reveal {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Loader: appears only if loading takes longer than ~300 ms, so fast loads never flash it.
+   Sits over the open (right-hand) part of the map, away from the headline. */
+.city-map-loader {
+  position: absolute;
+  inset: 0 0 0 45%;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  opacity: 0;
+  animation: loader-in 0.4s ease-out 0.3s forwards;
+}
+
+@media (max-width: 899px) {
+  .city-map-loader {
+    inset: 50% 0 0 0;
+  }
+}
+
+.city-map-frame[data-ready] .city-map-loader {
+  animation: none;
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+}
+
+/* A "searching" marker in the map's own visual language: a dot with a radar ring. */
+.city-map-loader span {
+  position: relative;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 18px 6px rgba(141, 177, 255, 0.3);
+}
+
+.city-map-loader span::before,
+.city-map-loader span::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(141, 177, 255, 0.7);
+  animation: loader-ring 1.6s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+}
+
+.city-map-loader span::after {
+  animation-delay: 0.8s;
+}
+
+@keyframes loader-in {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes loader-ring {
+  from {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .city-map-layer,
+  .city-map-frame[data-ready] .city-map-layer {
+    transform: none;
+    transition: opacity 0.3s linear;
+  }
+  .city-map-loader span::before,
+  .city-map-loader span::after {
+    animation: none;
+    opacity: 0.5;
+  }
+  .hero-cta {
+    transition: none;
+  }
+}

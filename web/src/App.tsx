@@ -8,6 +8,7 @@ import { RegisterPage } from './features/auth/RegisterPage'
 import { RequireAuth } from './features/auth/RequireAuth'
 import { RequireRole } from './features/auth/RequireRole'
 import { UserMenu } from './features/auth/UserMenu'
+import { HomePage } from './features/home/HomePage'
 import { LotAvailabilityPage } from './features/lots/LotAvailabilityPage'
 import { LotsPage } from './features/lots/LotsPage'
 import { MyReservationsPage } from './features/reservations/MyReservationsPage'
@@ -39,12 +40,12 @@ function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
+        <Route index element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/lots" element={<LotsPage />} />
         <Route path="/lots/:id" element={<LotAvailabilityPage />} />
         <Route element={<RequireAuth />}>
-          <Route index element={<p>Parking reservations.</p>} />
           <Route path="/reservations" element={<MyReservationsPage />} />
           <Route element={<RequireRole role={ADMIN} />}>
             <Route element={<AdminLayout />}>
