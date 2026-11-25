@@ -2,7 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { LoginPage } from '../auth/LoginPage'
+import { LoginPage, SESSION_ENDED } from '../auth/LoginPage'
 import { SPACE_TAKEN } from '../reservations/api'
 import { ANA, CENTAR, createTestQueryClient, csrfRoute, problem, type Route as ApiRoute, stubApi } from '../../test/apiStub'
 import { LotAvailabilityPage } from './LotAvailabilityPage'
@@ -129,18 +129,23 @@ describe('booking a space', () => {
       expect(screen.queryByText('A-02')).toBeNull()
     })
     expect(screen.queryByRole('button', { name: 'Confirm booking' })).toBeNull()
+    expect(screen.getByText('Not chosen yet')).toBeDefined()
     expect(calls(fetchMock, `GET /api/v1/lots/${CENTAR.id}/availability`)).toHaveLength(2)
   })
 
-  it('shows the rule message and keeps the plate editable after a 422', async () => {
+  it('shows an invalid plate under the field and keeps it editable after a 422', async () => {
     const message = "License plate 'X1' does not match the Bosnia and Herzegovina format, for example A12K345."
-    stubApi(routes(() => problem(422, { detail: message, errors: { general: [message] } })))
+    stubApi(routes(() => problem(422, { detail: message, errors: { plate: [message] } })))
     renderPage()
 
     await bookA02('X1')
 
-    expect((await screen.findByRole('alert')).textContent).toBe(message)
-    expect(screen.getByLabelText<HTMLInputElement>('License plate').value).toBe('X1')
+    const field = await screen.findByText(message)
+    const input = screen.getByLabelText<HTMLInputElement>('License plate')
+    expect(input.getAttribute('aria-describedby')).toContain(field.id)
+    expect(input.getAttribute('aria-invalid')).toBe('true')
+    expect(input.value).toBe('X1')
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('sends the user to sign in after a 401 and back to the lot afterwards', async () => {
@@ -153,6 +158,7 @@ describe('booking a space', () => {
     await bookA02()
 
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeDefined()
+    expect(screen.getByRole('status').textContent).toBe(SESSION_ENDED)
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: ANA.email } })
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Secret123!' } })
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))

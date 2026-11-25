@@ -87,7 +87,7 @@ function AvailabilityView({ lot }: { lot: Lot }) {
             // The hook has already refreshed the free spaces; this one is gone.
             setSpace(null)
           } else if (error instanceof SignedOutError) {
-            void navigate('/login', { state: { from: location } })
+            void navigate('/login', { state: { from: location, sessionEnded: true } })
           }
         },
       },
