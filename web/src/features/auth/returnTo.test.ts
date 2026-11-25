@@ -9,7 +9,7 @@ describe('readReturnTo', () => {
   })
 
   it('rejects targets that leave the site', () => {
-    for (const target of ['https://evil.com', '//evil.com', '/\evil.com', '/\t/evil.com', 'javascript:alert(1)', 'lots/1']) {
+    for (const target of ['https://evil.com', '//evil.com', '/\\evil.com', '/\t/evil.com', 'javascript:alert(1)', 'lots/1']) {
       expect(read(target), target).toBeNull()
     }
   })

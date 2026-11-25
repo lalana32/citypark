@@ -62,7 +62,8 @@ const TWO_SPACES = [
 
 function CurrentUrl() {
   const { pathname, search } = useLocation()
-  return <output data-testid="url">{pathname + search}</output>
+  // A plain span: <output> has the implicit role "status" and would clash with the loading states.
+  return <span data-testid="url">{pathname + search}</span>
 }
 
 function renderPage(path = `/lots/${CENTAR.id}`) {
