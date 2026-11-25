@@ -1,0 +1,112 @@
+/* My reservations page. Colours come from .site (site.css). */
+.res-page {
+  --danger: #b42318;
+
+  padding: 48px 0 96px;
+}
+
+.res-header {
+  margin-bottom: 32px;
+}
+
+.res-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.res-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+  padding: 24px;
+}
+
+.res-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.res-card-title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.res-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+  margin: 0;
+}
+
+.res-facts dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.res-facts dd {
+  margin: 4px 0 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.res-card-foot {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1.5px solid var(--line);
+}
+
+/* CancelAction renders nothing for a reservation that cannot be cancelled. */
+.res-card-foot:empty {
+  display: none;
+}
+
+/* The badge always carries its state as text; the colour only repeats it. */
+.res-card .badge {
+  flex: none;
+  padding: 4px 10px;
+  border: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.res-card .badge-Upcoming {
+  background: #eef3ff;
+  color: #2a4bb3;
+}
+
+.res-card .badge-InProgress {
+  background: #e7f6ec;
+  color: #17693a;
+}
+
+.res-card .badge-Finished {
+  background: #f1f3f7;
+  color: #4a5470;
+}
+
+.res-card .badge-Cancelled {
+  background: #fdecea;
+  color: #a3241a;
+}
+
+@media (max-width: 700px) {
+  .res-page {
+    padding: 32px 0 64px;
+  }
+
+  .res-card {
+    padding: 20px;
+  }
+}
