@@ -24,6 +24,10 @@ public sealed class CreateReservationServiceTests(PostgresFixture fixture) : ICl
     private static DateTimeOffset Local(int hour, int minute = 0) =>
         new DateTimeOffset(2026, 12, 1, hour, minute, 0, TimeSpan.FromHours(1)).ToUniversalTime();
 
+    // The same local time with its +01:00 offset kept, as the web app sends it.
+    private static DateTimeOffset WithOffset(int hour, int minute = 0) =>
+        new(2026, 12, 1, hour, minute, 0, TimeSpan.FromHours(1));
+
     // "Now" is 08:00 local on the same day: every test interval is in the future and within the horizon.
     private static FakeTimeProvider Clock => new(Local(8));
 
@@ -43,6 +47,20 @@ public sealed class CreateReservationServiceTests(PostgresFixture fixture) : ICl
         Assert.Equal("BAM", saved.Currency);
         Assert.Equal(new TimeInterval(Local(10), Local(11, 30)), saved.Interval);
         Assert.Equal(fixture.UserId, saved.UserId);
+    }
+
+    [Fact]
+    public async Task OffsetTimes_AreSavedAsMatchingUtcInstant()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var lot = await AddLotAsync(ct);
+        var space = Space(lot, "A-1");
+
+        var created = await CreateAsync(space.Id, WithOffset(10), WithOffset(11, 30), ct);
+
+        await using var db = fixture.CreateDbContext();
+        var saved = await db.Reservations.SingleAsync(r => r.Id == created.Id, ct);
+        Assert.Equal(new TimeInterval(Local(10), Local(11, 30)), saved.Interval);
     }
 
     [Fact]
@@ -180,6 +198,19 @@ public sealed class CreateReservationServiceTests(PostgresFixture fixture) : ICl
         Assert.Equal(Space(lot, "A-2").Id, created.SpaceId);
         Assert.Equal(4.00m, created.Price);
         Assert.Equal(2, await CountInLotAsync(lot, ct));
+    }
+
+    [Fact]
+    public async Task InLot_OffsetTimes_AreSavedAsMatchingUtcInstant()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var lot = await AddLotAsync(ct);
+
+        var created = await CreateInLotAsync(lot.Id, WithOffset(10), WithOffset(11, 30), ct);
+
+        await using var db = fixture.CreateDbContext();
+        var saved = await db.Reservations.SingleAsync(r => r.Id == created.Id, ct);
+        Assert.Equal(new TimeInterval(Local(10), Local(11, 30)), saved.Interval);
     }
 
     [Fact]

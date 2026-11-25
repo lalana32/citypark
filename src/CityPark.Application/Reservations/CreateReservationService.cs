@@ -24,7 +24,7 @@ public sealed class CreateReservationService(
         string plate,
         CancellationToken cancellationToken = default)
     {
-        var interval = new TimeInterval(start, end);
+        var interval = new TimeInterval(start.ToUniversalTime(), end.ToUniversalTime());
         var licensePlate = new LicensePlate(plate);
 
         var lot = await db.ParkingLots
@@ -66,7 +66,7 @@ public sealed class CreateReservationService(
         string plate,
         CancellationToken cancellationToken = default)
     {
-        var interval = new TimeInterval(start, end);
+        var interval = new TimeInterval(start.ToUniversalTime(), end.ToUniversalTime());
         var licensePlate = new LicensePlate(plate);
 
         var lot = await db.ParkingLots
