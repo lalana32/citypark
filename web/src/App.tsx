@@ -8,6 +8,7 @@ import { RegisterPage } from './features/auth/RegisterPage'
 import { RequireAuth } from './features/auth/RequireAuth'
 import { RequireRole } from './features/auth/RequireRole'
 import { UserMenu } from './features/auth/UserMenu'
+import { HomeLayout } from './features/home/HomeLayout'
 import { HomePage } from './features/home/HomePage'
 import { LotAvailabilityPage } from './features/lots/LotAvailabilityPage'
 import { LotsPage } from './features/lots/LotsPage'
@@ -39,8 +40,10 @@ function Layout() {
 function App() {
   return (
     <Routes>
-      <Route element={<Layout />}>
+      <Route element={<HomeLayout />}>
         <Route index element={<HomePage />} />
+      </Route>
+      <Route element={<Layout />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/lots" element={<LotsPage />} />

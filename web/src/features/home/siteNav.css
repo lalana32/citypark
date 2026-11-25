@@ -1,0 +1,209 @@
+/* On wide screens the nav floats over the hero, so the hero keeps its full size and look. */
+.site-header {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 10;
+  padding: 0;
+}
+
+.site-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  height: 88px;
+}
+
+.site-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #ffffff;
+  font-size: 22px;
+  text-decoration: none;
+}
+
+.site-nav-desktop {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.site-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.site-nav-mobile {
+  display: none;
+}
+
+.site-navlink {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--night-text);
+  font: 400 15px/1.4 Inter, ui-sans-serif, system-ui, sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.site-navlink:hover,
+.site-navlink[aria-current='page'] {
+  color: #ffffff;
+}
+
+.site-login {
+  padding: 0 8px;
+}
+
+.site-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1.5px solid var(--night-line);
+  border-radius: 8px;
+  background: transparent;
+  color: #ffffff;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.site-icon-btn:hover,
+.site-icon-btn[aria-expanded='true'] {
+  border-color: var(--primary);
+}
+
+/* ── Account menu (signed in) ── */
+.site-account {
+  position: relative;
+}
+
+.site-account-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 12px 0 6px;
+  border: 1.5px solid var(--night-line);
+  border-radius: 999px;
+  background: transparent;
+  color: #ffffff;
+  font: 500 14px Inter, ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.site-account-btn:hover,
+.site-account-btn[aria-expanded='true'] {
+  border-color: var(--primary);
+}
+
+.site-account-btn > svg {
+  transition: transform 0.2s ease;
+}
+
+.site-account-btn[aria-expanded='true'] > svg {
+  transform: rotate(180deg);
+}
+
+.site-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--ink);
+}
+
+.site-account-menu {
+  position: absolute;
+  top: 52px;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  width: 220px;
+  padding: 8px;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 12px 32px rgba(11, 16, 36, 0.25);
+}
+
+.site-account-menu > a,
+.site-account-logout {
+  padding: 11px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink);
+  font: 400 15px/1.4 Inter, ui-sans-serif, system-ui, sans-serif;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.site-account-menu > a:hover,
+.site-account-logout:hover {
+  background: #f3f5fa;
+}
+
+.site-account-logout {
+  margin-top: 6px;
+  border-top: 1.5px solid var(--line);
+  border-radius: 0 0 8px 8px;
+  color: var(--muted);
+}
+
+.site-account-menu .site-account-logout:focus-visible,
+.site-account-menu > a:focus-visible {
+  outline-color: var(--accent);
+}
+
+/* ── Mobile: hamburger menu, nav sits above the hero instead of over it ── */
+@media (max-width: 899px) {
+  .site-header {
+    position: relative;
+    background: var(--night);
+  }
+
+  .site-header-bar {
+    height: 72px;
+  }
+
+  .site-nav-desktop {
+    display: none;
+  }
+
+  .site-nav-mobile {
+    display: flex;
+  }
+
+  .site-mobile-menu {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding-bottom: 16px;
+  }
+
+  .site-mobile-menu .site-navlink {
+    padding: 12px 0;
+    font-size: 17px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-navlink,
+  .site-icon-btn,
+  .site-account-btn,
+  .site-account-btn > svg {
+    transition: none;
+  }
+}
