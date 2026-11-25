@@ -56,6 +56,17 @@ describe('locations section', () => {
     expect(card.getByText('Total spaces').nextElementSibling?.textContent).toBe('30')
   })
 
+  it('shows the photo of a known lot and the illustration for any other', async () => {
+    renderSection({
+      'GET /api/v1/lots': () => Response.json(page([CENTAR, EVENING])),
+      [availabilityOf(CENTAR.id)]: availability(12),
+    })
+
+    const [centar, evening] = await screen.findAllByRole('listitem')
+    expect(within(centar).getByRole('img', { name: 'Centar parking lot' }).getAttribute('src')).toContain('centar')
+    expect(within(evening).queryByRole('img')).toBeNull()
+  })
+
   it('shows the free spaces for the default slot', async () => {
     const fetchMock = renderSection({
       'GET /api/v1/lots': () => Response.json(page([CENTAR])),
