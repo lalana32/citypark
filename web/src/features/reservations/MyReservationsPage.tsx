@@ -2,22 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { Pager } from '../../components/Pager'
 import { formatLotDateTime } from '../lots/interval'
-import {
-  canCancel,
-  CancelRejectedError,
-  formatPrice,
-  type Reservation,
-  UNEXPECTED_ERROR,
-  useCancelReservation,
-  useMyReservations,
-} from './api'
-
-const STATE_LABELS: Record<Reservation['state'], string> = {
-  Upcoming: 'Upcoming',
-  InProgress: 'In progress',
-  Finished: 'Finished',
-  Cancelled: 'Cancelled',
-}
+import { canCancel, formatPrice, type Reservation, useCancelReservation, useMyReservations } from './api'
+import { CancelAction, StateBadge } from './ReservationParts'
 
 export function MyReservationsPage() {
   const [page, setPage] = useState(1)
@@ -59,10 +45,10 @@ export function MyReservationsPage() {
                   <td>{reservation.plate}</td>
                   <td>{formatPrice(reservation)}</td>
                   <td>
-                    <span className={`badge badge-${reservation.state}`}>{STATE_LABELS[reservation.state]}</span>
+                    <StateBadge state={reservation.state} />
                   </td>
                   <td>
-                    <CancelAction reservation={reservation} cancellable={canCancel(reservation, now)} />
+                    <MyCancel reservation={reservation} cancellable={canCancel(reservation, now)} />
                   </td>
                 </tr>
               ))}
@@ -76,36 +62,9 @@ export function MyReservationsPage() {
   )
 }
 
-function CancelAction({ reservation, cancellable }: { reservation: Reservation; cancellable: boolean }) {
+function MyCancel({ reservation, cancellable }: { reservation: Reservation; cancellable: boolean }) {
   const cancel = useCancelReservation()
-  const [confirming, setConfirming] = useState(false)
-
-  const error =
-    cancel.error instanceof CancelRejectedError ? cancel.error.message : cancel.isError ? UNEXPECTED_ERROR : null
-
-  const confirm = () => cancel.mutate(reservation.id, { onSettled: () => setConfirming(false) })
-
-  return (
-    <>
-      {cancellable && !confirming && (
-        <button type="button" onClick={() => setConfirming(true)}>
-          Cancel
-        </button>
-      )}
-      {cancellable && confirming && (
-        <div role="group" aria-label="Confirm cancellation">
-          <span>Cancel this reservation?</span>
-          <button type="button" disabled={cancel.isPending} onClick={confirm}>
-            {cancel.isPending ? 'Cancelling…' : 'Yes, cancel'}
-          </button>
-          <button type="button" disabled={cancel.isPending} onClick={() => setConfirming(false)}>
-            Keep it
-          </button>
-        </div>
-      )}
-      {error && <p role="alert">{error}</p>}
-    </>
-  )
+  return <CancelAction reservationId={reservation.id} cancellable={cancellable} cancel={cancel} />
 }
 
 /** The current time, refreshed every 30 seconds so the cancel button disappears at the cutoff. */

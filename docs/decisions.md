@@ -12,6 +12,7 @@ Each entry has a decision, the rationale, the evidence it is based on and a fall
 | D2 | xUnit v3 runner mode on the .NET 10 SDK | Microsoft.Testing.Platform (MTP) | 2026-11-15 |
 | D3 | Board and repository visibility | Public repository, private board until the project is finished | 2026-11-15 |
 | D4 | TypeScript version of the frontend | TypeScript 5.9, not 6.0 | 2026-11-24 |
+| D5 | Register reveals that an email is taken | Accepted: 409 on register, rate limited | 2026-11-24 |
 
 ## D1: snake_case naming in EF Core
 
@@ -121,3 +122,21 @@ explicitly in both tsconfig files, because TypeScript 5 does not turn it on by d
 
 **Fallback.** When `openapi-typescript` releases support for TypeScript 6, remove the Dependabot
 ignore rule for `typescript` major updates and upgrade.
+
+## D5: Register reveals that an email is taken
+
+**Decision.** `POST /api/v1/auth/register` answers **409** "An account with this email already
+exists." for a taken email. This is a known account-enumeration leak and is accepted for now.
+
+**Rationale.** Login hides whether an account exists: an unknown email, a wrong password and a
+locked account all get the same 401. Register cannot hide it without email verification. The
+usual fix is to answer every registration the same way ("check your inbox") and to email the
+owner of an existing account instead. CityPark sends no email, so that fix is out of scope, and a
+customer who already has an account gets a clear answer instead of a silent one.
+
+**Mitigation.** Register shares the `credentials` rate-limit policy with login: 10 requests per
+minute per client address (`AuthRateLimiting`). This does not hide the answer for a single email;
+it slows down checking a long list of them.
+
+**Fallback.** When email sending is added, register returns the same response for a new and a
+taken email, and the owner of a taken email gets a notification instead of the 409.
