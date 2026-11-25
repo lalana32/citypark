@@ -86,6 +86,8 @@ describe('booking a space', () => {
     expect(screen.getByText('1 Dec 2026, 10:00')).toBeDefined()
     expect(screen.getByText('1 Dec 2026, 11:30')).toBeDefined()
     expect(screen.getByText('5.00 BAM')).toBeDefined()
+    expect(screen.getByRole('link', { name: 'My reservations' }).getAttribute('href')).toBe('/reservations')
+    expect(screen.getByRole('link', { name: 'Back to home' }).getAttribute('href')).toBe('/')
     const [request] = calls(fetchMock, 'POST /api/v1/reservations')
     expect(await request.json()).toMatchObject({ spaceId: A02.id, plate: 'A12K345' })
   })

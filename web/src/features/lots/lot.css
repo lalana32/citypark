@@ -162,6 +162,34 @@
   cursor: progress;
 }
 
+.lot-success-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lot-success-title::before {
+  content: '✓';
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 15px;
+}
+
+.lot-success-lead {
+  margin: 0 0 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.lot-success .lot-booking-actions .site-btn {
+  flex-basis: 100%;
+}
+
 @media (max-width: 899px) {
   .lot-layout {
     grid-template-columns: 1fr;
