@@ -20,7 +20,7 @@ describe('site footer', () => {
     const nav = within(screen.getByRole('navigation', { name: 'Footer' }))
     expect(nav.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
       '/',
-      '/#locations',
+      '/lots',
       '/#how-it-works',
       '/#faq',
     ])

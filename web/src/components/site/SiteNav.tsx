@@ -10,14 +10,14 @@ type NavItem = { label: string; href: string; route?: boolean }
 
 const GUEST_LINKS: NavItem[] = [
   { label: 'Home', href: '/', route: true },
-  { label: 'Parking lots', href: '/#locations' },
+  { label: 'Parking lots', href: '/lots', route: true },
   { label: 'How it works', href: '/#how-it-works' },
   { label: 'Contact', href: '/#contact' },
 ]
 
 const USER_LINKS: NavItem[] = [
   { label: 'Home', href: '/', route: true },
-  { label: 'Parking lots', href: '/#locations' },
+  { label: 'Parking lots', href: '/lots', route: true },
   { label: 'My reservations', href: '/reservations', route: true },
 ]
 
@@ -25,7 +25,7 @@ const ADMIN_LINK: NavItem = { label: 'Admin', href: '/admin/lots', route: true }
 
 type Props = { overHero?: boolean }
 
-/** Top navigation of every page; section links go to the home page sections. */
+/** Top navigation of every page; `/#...` links go to the home page sections. */
 export function SiteNav({ overHero = false }: Props) {
   const session = useSession()
   const [menuOpen, setMenuOpen] = useState(false)
