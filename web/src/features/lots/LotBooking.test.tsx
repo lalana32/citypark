@@ -63,7 +63,7 @@ function renderPage() {
 
 async function bookA02(plate = 'A12K345') {
   fireEvent.click(await screen.findByRole('button', { name: 'Check availability' }))
-  fireEvent.click(await screen.findByRole('button', { name: 'Book space A-02' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Space A-02' }))
   fireEvent.change(screen.getByLabelText('License plate'), { target: { value: plate } })
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
   fireEvent.click(screen.getByRole('button', { name: 'Confirm booking' }))
