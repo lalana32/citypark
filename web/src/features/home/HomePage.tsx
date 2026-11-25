@@ -3,6 +3,7 @@ import { AnimatedCityMap } from './cityMap/AnimatedCityMap'
 import { FaqSection } from './FaqSection'
 import { HowItWorksSection } from './HowItWorksSection'
 import { LocationsSection } from './LocationsSection'
+import { PlanPreviewSection } from './PlanPreviewSection'
 import './home.css'
 
 /** Public landing page: the hero with the animated city map, then the browsing sections. */
@@ -12,6 +13,7 @@ export function HomePage() {
       <Hero />
       <LocationsSection />
       <HowItWorksSection />
+      <PlanPreviewSection />
       <FaqSection />
     </>
   )
