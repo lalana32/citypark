@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { LoginPage, SESSION_ENDED } from '../auth/LoginPage'
+import { RegisterPage } from '../auth/RegisterPage'
 import { SPACE_TAKEN } from '../reservations/api'
 import { ANA, CENTAR, createTestQueryClient, csrfRoute, type Handler, problem, type Route as ApiRoute, stubApi } from '../../test/apiStub'
 import { LotAvailabilityPage } from './LotAvailabilityPage'
@@ -54,6 +55,7 @@ function renderPage() {
       <MemoryRouter initialEntries={[`/lots/${CENTAR.id}`]}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="/lots/:id" element={<LotAvailabilityPage />} />
         </Routes>
       </MemoryRouter>
@@ -198,5 +200,57 @@ describe('reserving as a guest', () => {
 
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.getByRole('button', { name: 'Space A-02' }).getAttribute('aria-pressed')).toBe('true')
+  })
+})
+
+describe('coming back after signing in', () => {
+  const asGuest = () => ({
+    ...routes(() => Response.json(RESERVATION, { status: 201 }), [[A02]], () => problem(401)),
+    'POST /api/v1/auth/login': () => Response.json(ANA),
+    'POST /api/v1/auth/register': () => Response.json(ANA, { status: 201 }),
+  })
+
+  function fillCredentials() {
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: ANA.email } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Secret123!' } })
+  }
+
+  async function reserveA02() {
+    fireEvent.click(await screen.findByRole('button', { name: 'Check availability' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Space A-02' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Reserve' }))
+  }
+
+  async function expectBackOnA02() {
+    expect(await screen.findByRole('heading', { name: 'Centar' })).toBeDefined()
+    expect((await screen.findByRole('button', { name: 'Space A-02' })).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByLabelText('License plate')).toBeDefined()
+  }
+
+  it('brings the guest back to the same time and space after login, ready to confirm', async () => {
+    stubApi(asGuest())
+    renderPage()
+
+    await reserveA02()
+    fireEvent.click(screen.getByRole('link', { name: 'Log in' }))
+    fillCredentials()
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign in' }))
+
+    await expectBackOnA02()
+  })
+
+  it('brings a new user back after register and then login', async () => {
+    stubApi(asGuest())
+    renderPage()
+
+    await reserveA02()
+    fireEvent.click(screen.getByRole('link', { name: 'Register' }))
+    fillCredentials()
+    fireEvent.click(await screen.findByRole('button', { name: 'Create account' }))
+    expect(await screen.findByText('Account created. Sign in to continue.')).toBeDefined()
+    fillCredentials()
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+
+    await expectBackOnA02()
   })
 })
