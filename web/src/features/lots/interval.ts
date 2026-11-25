@@ -87,3 +87,11 @@ export function isOpenFor(lot: { opensAt: string; closesAt: string }, interval: 
     toMinutes(lot.opensAt) <= toMinutes(interval.start) && toMinutes(interval.end) <= toMinutes(lot.closesAt)
   )
 }
+
+/** "10:00" to "11:15" -> "1 h 15 min". */
+export function formatDuration(start: string, end: string): string {
+  const total = toMinutes(end) - toMinutes(start)
+  const hours = Math.floor(total / 60)
+  const minutes = total % 60
+  return [hours > 0 && `${hours} h`, minutes > 0 && `${minutes} min`].filter(Boolean).join(' ')
+}

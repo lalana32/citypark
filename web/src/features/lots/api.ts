@@ -116,3 +116,22 @@ export function toAvailabilityErrors(problem: Problem | undefined): Availability
 
   return result
 }
+
+export type Quote = components['schemas']['QuoteResponse']
+
+/** The price for an interval the availability check has already accepted. */
+export function useQuote(id: string, interval: { start: string; end: string } | null) {
+  return useQuery({
+    queryKey: [...lotsKey, id, 'quote', interval?.start, interval?.end],
+    queryFn: async (): Promise<Quote> => {
+      const { data, response } = await api.GET('/api/v1/lots/{id}/quote', {
+        params: { path: { id }, query: interval! },
+      })
+      if (!data) {
+        throw new Error(`The quote request failed with ${response.status}.`)
+      }
+      return data
+    },
+    enabled: interval !== null,
+  })
+}

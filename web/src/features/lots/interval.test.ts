@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatLotDateTime, isOpenFor, nextSlot, quarterHours, toLotInstant } from './interval'
+import { formatDuration, formatLotDateTime, isOpenFor, nextSlot, quarterHours, toLotInstant } from './interval'
 
 describe('quarterHours', () => {
   it('lists every quarter hour of the window, both ends included', () => {
@@ -59,5 +59,13 @@ describe('isOpenFor', () => {
   it('rejects a slot that starts before opening or ends after closing', () => {
     expect(isOpenFor(lot, { date: '2026-12-01', start: '06:45', end: '08:45' })).toBe(false)
     expect(isOpenFor(lot, { date: '2026-12-01', start: '20:15', end: '22:15' })).toBe(false)
+  })
+})
+
+describe('formatDuration', () => {
+  it('shows hours and minutes, leaving out a zero part', () => {
+    expect(formatDuration('10:00', '11:15')).toBe('1 h 15 min')
+    expect(formatDuration('10:00', '12:00')).toBe('2 h')
+    expect(formatDuration('10:00', '10:45')).toBe('45 min')
   })
 })
