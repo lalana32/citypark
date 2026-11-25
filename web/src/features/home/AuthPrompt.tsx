@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Link } from 'react-router'
-import { Logo } from './Logo'
+import { Logo } from '../../components/site/Logo'
 import './authPrompt.css'
 
 type Props = { onClose: () => void }

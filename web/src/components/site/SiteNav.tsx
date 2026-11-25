@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router'
-import { hasRole, useLogout, useSession } from '../auth/api'
+import { hasRole, useLogout, useSession } from '../../features/auth/api'
 import { Logo } from './Logo'
 import './siteNav.css'
 
