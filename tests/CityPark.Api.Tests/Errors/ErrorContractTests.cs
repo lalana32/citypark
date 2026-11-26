@@ -119,12 +119,12 @@ public class ErrorContractTests(ClockedApiFactory factory) : IClassFixture<Clock
     {
         await AuthClient.SignInNewCustomerAsync(client);
         var spaceId = await NewSpaceAsync(ct);
-        using (var first = await client.PostAsJsonAsync(Reservations, Body(spaceId, "2026-12-01T09:00:00Z", "2026-12-01T10:00:00Z", "A12K345"), ct))
+        using (var first = await client.PostAsJsonAsync(Reservations, Body(spaceId, "2026-12-01T09:00:00Z", "2026-12-01T10:00:00Z", TestPlates.Next()), ct))
         {
             Assert.Equal(HttpStatusCode.Created, first.StatusCode);
         }
 
-        return await client.PostAsJsonAsync(Reservations, Body(spaceId, "2026-12-01T09:00:00Z", "2026-12-01T10:00:00Z", "E12K345"), ct);
+        return await client.PostAsJsonAsync(Reservations, Body(spaceId, "2026-12-01T09:00:00Z", "2026-12-01T10:00:00Z", TestPlates.Next()), ct);
     }
 
     // 10:07 local is not on the 15-minute grid.

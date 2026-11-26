@@ -92,7 +92,7 @@ public class QuoteEndpointTests(ClockedApiFactory factory) : IClassFixture<Clock
 
         using var created = await client.PostAsJsonAsync(
             new Uri("/api/v1/reservations", UriKind.Relative),
-            new { lotId = lot.Id, start = Start, end = End, plate = "A12K345" },
+            new { lotId = lot.Id, start = Start, end = End, plate = TestPlates.Next() },
             ct);
 
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);

@@ -17,8 +17,6 @@ public sealed class OwnReservationQueryServiceTests(PostgresFixture fixture) : I
     // Every reservation is booked on Tuesday 1 December 2026 at 08:00 and lies later in December.
     private static readonly DateTimeOffset BookedAt = Local(1, 8);
 
-    private static int _plateNumber;
-
     // December 2026 is winter time in Sarajevo (UTC+1). Times in the tests are local.
     private static DateTimeOffset Local(int day, int hour, int minute = 0) =>
         new DateTimeOffset(2026, 12, day, hour, minute, 0, TimeSpan.FromHours(1)).ToUniversalTime();
@@ -196,20 +194,12 @@ public sealed class OwnReservationQueryServiceTests(PostgresFixture fixture) : I
     private static Dictionary<Guid, ReservationState> StatesById(PagedResult<OwnReservation> result) =>
         result.Items.ToDictionary(i => i.Id, i => i.State);
 
-    // A new plate per reservation: the plate exclusion constraint (R7) spans all lots and users,
-    // and tests in this class share one database and the same December days.
-    private static LicensePlate NextPlate()
-    {
-        var n = Interlocked.Increment(ref _plateNumber);
-        return new LicensePlate($"A{n / 1000:00}K{n % 1000:000}");
-    }
-
     private static Reservation Book(
         ParkingLot lot, ParkingSpace space, Guid userId, DateTimeOffset start, DateTimeOffset end, bool cancel = false)
     {
         var clock = new FakeTimeProvider(BookedAt);
         var reservation = Reservation.Create(
-            lot, space, new TimeInterval(start, end), NextPlate(), userId, Sarajevo, clock);
+            lot, space, new TimeInterval(start, end), new LicensePlate(TestPlates.Next()), userId, Sarajevo, clock);
 
         if (cancel)
         {

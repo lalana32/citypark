@@ -14,8 +14,6 @@ namespace CityPark.Infrastructure.Tests.Reservations;
 public sealed class ParallelReservationTests : IClassFixture<PostgresFixture>, IAsyncDisposable
 {
     private const int Rounds = 20;
-    private const string Plate = "A12K345";
-
     private static readonly TimeZoneInfo Sarajevo = TimeZoneInfo.FindSystemTimeZoneById("Europe/Sarajevo");
 
     private readonly PostgresFixture _fixture;
@@ -164,14 +162,14 @@ public sealed class ParallelReservationTests : IClassFixture<PostgresFixture>, I
     {
         await using var scope = _services.CreateAsyncScope();
         var service = scope.ServiceProvider.GetRequiredService<CreateReservationService>();
-        await service.CreateInLotAsync(_fixture.UserId, lotId, start, end, Plate, ct);
+        await service.CreateInLotAsync(_fixture.UserId, lotId, start, end, TestPlates.Next(), ct);
     }
 
     private async Task CreateAsync(Guid spaceId, DateTimeOffset start, DateTimeOffset end, CancellationToken ct)
     {
         await using var scope = _services.CreateAsyncScope();
         var service = scope.ServiceProvider.GetRequiredService<CreateReservationService>();
-        await service.CreateAsync(_fixture.UserId, spaceId, start, end, Plate, ct);
+        await service.CreateAsync(_fixture.UserId, spaceId, start, end, TestPlates.Next(), ct);
     }
 
     private async Task<int> CountActiveAsync(Guid spaceId, CancellationToken ct)

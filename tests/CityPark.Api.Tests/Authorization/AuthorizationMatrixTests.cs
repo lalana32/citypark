@@ -172,7 +172,7 @@ public class AuthorizationMatrixTests(ClockedApiFactory factory) : IClassFixture
     private async Task<Guid> CreateReservationAsync(HttpClient client, CancellationToken ct)
     {
         var lot = await TestLots.AddAsync(factory, TestLots.UniqueName("Matrix"), spaces: 1, inactiveSpaces: 0, ct);
-        var body = new { spaceId = lot.Spaces.Single().Id, start = "2026-12-01T09:00:00Z", end = "2026-12-01T10:30:00Z", plate = "A12K345" };
+        var body = new { spaceId = lot.Spaces.Single().Id, start = "2026-12-01T09:00:00Z", end = "2026-12-01T10:30:00Z", plate = TestPlates.Next() };
 
         using var response = await client.PostAsJsonAsync(Relative("/api/v1/reservations"), body, ct);
 

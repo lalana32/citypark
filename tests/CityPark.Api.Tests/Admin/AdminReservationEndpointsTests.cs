@@ -15,8 +15,6 @@ namespace CityPark.Api.Tests.Admin;
 // 403 for a customer is in AuthorizationMatrixTests.
 public class AdminReservationEndpointsTests(ClockedApiFactory factory) : IClassFixture<ClockedApiFactory>
 {
-    private static int _plateNumber;
-
     private static int _dayNumber;
 
     private FakeTimeProvider Clock => (FakeTimeProvider)factory.Services.GetRequiredService<TimeProvider>();
@@ -153,16 +151,10 @@ public class AdminReservationEndpointsTests(ClockedApiFactory factory) : IClassF
         return day;
     }
 
-    private static string NextPlate()
-    {
-        var n = Interlocked.Increment(ref _plateNumber);
-        return $"E{n / 1000:00}K{n % 1000:000}";
-    }
-
     // One hour from the given start, booked through the customer API.
     private static async Task<Guid> ReserveAsync(HttpClient customer, ParkingSpace space, DateTimeOffset start, CancellationToken ct)
     {
-        var body = new { spaceId = space.Id, start, end = start.AddHours(1), plate = NextPlate() };
+        var body = new { spaceId = space.Id, start, end = start.AddHours(1), plate = TestPlates.Next() };
 
         using var response = await customer.PostAsJsonAsync(Relative("/api/v1/reservations"), body, ct);
 

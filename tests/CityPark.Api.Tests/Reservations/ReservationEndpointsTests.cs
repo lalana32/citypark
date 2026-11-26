@@ -66,14 +66,14 @@ public class ReservationEndpointsTests(ClockedApiFactory factory) : IClassFixtur
         using var client = AuthClient.Create(factory);
         await AuthClient.SignInNewCustomerAsync(client);
 
-        using (var first = await client.PostAsJsonAsync(Reservations, Body(spaceId, Start, End, "A12K345"), ct))
+        using (var first = await client.PostAsJsonAsync(Reservations, Body(spaceId, Start, End, TestPlates.Next()), ct))
         {
             Assert.Equal(HttpStatusCode.Created, first.StatusCode);
         }
 
         // 10:30–11:30 local overlaps 10:00–11:30; another plate, so only the space rule (R6) can fail.
         using var second = await client.PostAsJsonAsync(
-            Reservations, Body(spaceId, "2026-12-01T09:30:00Z", "2026-12-01T10:30:00Z", "E12K345"), ct);
+            Reservations, Body(spaceId, "2026-12-01T09:30:00Z", "2026-12-01T10:30:00Z", TestPlates.Next()), ct);
 
         Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
         Assert.Equal("application/problem+json", second.Content.Headers.ContentType?.MediaType);
@@ -88,10 +88,10 @@ public class ReservationEndpointsTests(ClockedApiFactory factory) : IClassFixtur
         var ct = TestContext.Current.CancellationToken;
         var lot = await TestLots.AddAsync(factory, TestLots.UniqueName("Centar"), spaces: 2, inactiveSpaces: 0, ct);
         using var client = await SignedInClientAsync();
-        await CreateAsync(client, lot.Spaces.Single(s => s.Label == "A-01").Id, "A12K345", ct);
+        await CreateAsync(client, lot.Spaces.Single(s => s.Label == "A-01").Id, TestPlates.Next(), ct);
 
         using var response = await client.PostAsJsonAsync(
-            Reservations, new { lotId = lot.Id, start = Start, end = End, plate = "E12K345" }, ct);
+            Reservations, new { lotId = lot.Id, start = Start, end = End, plate = TestPlates.Next() }, ct);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
@@ -106,10 +106,10 @@ public class ReservationEndpointsTests(ClockedApiFactory factory) : IClassFixtur
         var ct = TestContext.Current.CancellationToken;
         var lot = await TestLots.AddAsync(factory, TestLots.UniqueName("Centar"), spaces: 1, inactiveSpaces: 0, ct);
         using var client = await SignedInClientAsync();
-        await CreateAsync(client, lot.Spaces.Single().Id, "A12K345", ct);
+        await CreateAsync(client, lot.Spaces.Single().Id, TestPlates.Next(), ct);
 
         using var response = await client.PostAsJsonAsync(
-            Reservations, new { lotId = lot.Id, start = Start, end = End, plate = "E12K345" }, ct);
+            Reservations, new { lotId = lot.Id, start = Start, end = End, plate = TestPlates.Next() }, ct);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
@@ -146,7 +146,7 @@ public class ReservationEndpointsTests(ClockedApiFactory factory) : IClassFixtur
     {
         var ct = TestContext.Current.CancellationToken;
         using var owner = await SignedInClientAsync();
-        var id = await CreateAsync(owner, await NewSpaceAsync(ct), "A12K345", ct);
+        var id = await CreateAsync(owner, await NewSpaceAsync(ct), TestPlates.Next(), ct);
 
         using var response = await owner.GetAsync(ReservationEndpoints.Location(id), ct);
 
@@ -160,7 +160,7 @@ public class ReservationEndpointsTests(ClockedApiFactory factory) : IClassFixtur
         var ct = TestContext.Current.CancellationToken;
         using var userA = await SignedInClientAsync();
         using var userB = await SignedInClientAsync();
-        var id = await CreateAsync(userA, await NewSpaceAsync(ct), "A12K345", ct);
+        var id = await CreateAsync(userA, await NewSpaceAsync(ct), TestPlates.Next(), ct);
 
         using var response = await userB.GetAsync(ReservationEndpoints.Location(id), ct);
 
@@ -176,10 +176,10 @@ public class ReservationEndpointsTests(ClockedApiFactory factory) : IClassFixtur
         using var userB = await SignedInClientAsync();
         HashSet<Guid> own =
         [
-            await CreateAsync(userA, await NewSpaceAsync(ct), "A12K345", ct),
-            await CreateAsync(userA, await NewSpaceAsync(ct), "E12K345", ct),
+            await CreateAsync(userA, await NewSpaceAsync(ct), TestPlates.Next(), ct),
+            await CreateAsync(userA, await NewSpaceAsync(ct), TestPlates.Next(), ct),
         ];
-        await CreateAsync(userB, await NewSpaceAsync(ct), "J12K345", ct);
+        await CreateAsync(userB, await NewSpaceAsync(ct), TestPlates.Next(), ct);
 
         var first = await userA.GetFromJsonAsync<JsonElement>(new Uri("/api/v1/reservations?page=1&pageSize=1", UriKind.Relative), ct);
         var second = await userA.GetFromJsonAsync<JsonElement>(new Uri("/api/v1/reservations?page=2&pageSize=1", UriKind.Relative), ct);
@@ -212,7 +212,7 @@ public class ReservationEndpointsTests(ClockedApiFactory factory) : IClassFixtur
     {
         var ct = TestContext.Current.CancellationToken;
         using var owner = await SignedInClientAsync();
-        var id = await CreateAsync(owner, await NewSpaceAsync(ct), "A12K345", ct);
+        var id = await CreateAsync(owner, await NewSpaceAsync(ct), TestPlates.Next(), ct);
 
         using var response = await owner.PostAsync(Cancel(id), content: null, ct);
 
@@ -226,7 +226,7 @@ public class ReservationEndpointsTests(ClockedApiFactory factory) : IClassFixtur
         var ct = TestContext.Current.CancellationToken;
         using var userA = await SignedInClientAsync();
         using var userB = await SignedInClientAsync();
-        var id = await CreateAsync(userA, await NewSpaceAsync(ct), "A12K345", ct);
+        var id = await CreateAsync(userA, await NewSpaceAsync(ct), TestPlates.Next(), ct);
 
         using var response = await userB.PostAsync(Cancel(id), content: null, ct);
 
@@ -257,7 +257,7 @@ public class ReservationEndpointsTests(ClockedApiFactory factory) : IClassFixtur
     {
         var ct = TestContext.Current.CancellationToken;
         using var owner = await SignedInClientAsync();
-        var id = await CreateAsync(owner, await NewSpaceAsync(ct), "A12K345", ct);
+        var id = await CreateAsync(owner, await NewSpaceAsync(ct), TestPlates.Next(), ct);
         using (var first = await owner.PostAsync(Cancel(id), content: null, ct))
         {
             Assert.Equal(HttpStatusCode.NoContent, first.StatusCode);

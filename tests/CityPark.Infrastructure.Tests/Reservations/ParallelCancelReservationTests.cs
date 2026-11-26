@@ -78,7 +78,7 @@ public sealed class ParallelCancelReservationTests(PostgresFixture fixture) : IC
         await db.SaveChangesAsync(ct);
 
         var service = new CreateReservationService(db, new PostgresDatabaseErrors(), new FakeTimeProvider(Local(8)), Sarajevo);
-        var reservation = await service.CreateAsync(fixture.UserId, space.Id, Local(10), Local(11), "A12K345", ct);
+        var reservation = await service.CreateAsync(fixture.UserId, space.Id, Local(10), Local(11), TestPlates.Next(), ct);
         return reservation.Id;
     }
 }
