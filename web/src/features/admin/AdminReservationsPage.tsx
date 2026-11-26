@@ -13,7 +13,9 @@ export function AdminReservationsPage() {
 
   return (
     <section>
-      <h2>All reservations</h2>
+      <header className="admin-header">
+        <h2 className="site-h2 site-display">All reservations</h2>
+      </header>
       {reservations.isPending && <p role="status">Loading reservations…</p>}
       {reservations.isError && <p role="alert">We could not load the reservations. Please try again.</p>}
       {reservations.data && reservations.data.items.length === 0 && <p>There are no reservations yet.</p>}
