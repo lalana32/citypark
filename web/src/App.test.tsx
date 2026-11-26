@@ -23,6 +23,15 @@ function renderApp(path: string) {
   )
 }
 
+describe('register page', () => {
+  it('sets the tab title', () => {
+    stubApi(signedOut)
+    renderApp('/register')
+
+    expect(document.title).toBe('Create an account · CityPark')
+  })
+})
+
 function register(email: string, password: string) {
   fireEvent.change(screen.getByLabelText('Email'), { target: { value: email } })
   fireEvent.change(screen.getByLabelText('Password'), { target: { value: password } })

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Pager } from '../../components/Pager'
+import { useDocumentTitle } from '../../components/useDocumentTitle'
 import { useLots } from './api'
 import { nextSlot } from './interval'
 import { LotCard } from './LotCard'
@@ -9,6 +10,7 @@ export function LotsPage() {
   const [page, setPage] = useState(1)
   const [slot] = useState(() => nextSlot())
   const lots = useLots(page)
+  useDocumentTitle('Parking lots')
 
   return (
     <section className="lots-page" aria-labelledby="lots-title">

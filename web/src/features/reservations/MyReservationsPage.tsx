@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { Pager } from '../../components/Pager'
+import { useDocumentTitle } from '../../components/useDocumentTitle'
 import {
   CancelRejectedError,
   canCancel,
@@ -20,6 +21,7 @@ export const CANCELLED_NOTICE = 'Reservation cancelled. You can find it under Pa
 type Outcome = { kind: 'cancelled' } | { kind: 'failed'; message: string }
 
 export function MyReservationsPage() {
+  useDocumentTitle('My reservations')
   const [page, setPage] = useState(1)
   const reservations = useMyReservations(page)
   const now = useNow()

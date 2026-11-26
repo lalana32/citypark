@@ -80,6 +80,14 @@ function calls(fetchMock: ReturnType<typeof stubApi>, route: string) {
 }
 
 describe('my reservations', () => {
+  it('sets the tab title', async () => {
+    stubApi(routes(() => Response.json(page([reservation()]))))
+    renderPage()
+
+    await cardOf('A-02')
+    expect(document.title).toBe('My reservations · CityPark')
+  })
+
   it('shows each reservation as a card with its details in lot time', async () => {
     stubApi(routes(() => Response.json(page([reservation()]))))
     renderPage()

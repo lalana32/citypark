@@ -46,6 +46,13 @@ describe('LotsPage', () => {
     expect(card.getByRole('link', { name: 'View parking: Centar' }).getAttribute('href')).toBe(`/lots/${CENTAR.id}`)
   })
 
+  it('sets the tab title', () => {
+    stubApi({ 'GET /api/v1/lots': () => Response.json(page([])) })
+    renderPage()
+
+    expect(document.title).toBe('Parking lots · CityPark')
+  })
+
   it('shows a loading state until the lots arrive', async () => {
     stubApi({ 'GET /api/v1/lots': () => Response.json(page([CENTAR])), ...centarAvailability })
     renderPage()

@@ -35,6 +35,13 @@ function signIn(email: string, password: string) {
 }
 
 describe('LoginPage', () => {
+  it('sets the tab title', () => {
+    stubApi(csrfRoute)
+    renderApp('/login')
+
+    expect(document.title).toBe('Sign in · CityPark')
+  })
+
   it('signs in and goes to the home page', async () => {
     stubApi({ ...csrfRoute, 'POST /api/v1/auth/login': () => Response.json(ANA) })
     renderApp('/login')

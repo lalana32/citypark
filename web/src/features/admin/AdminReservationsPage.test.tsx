@@ -71,6 +71,14 @@ function cancelRow(row: HTMLElement) {
 }
 
 describe('admin reservations', () => {
+  it('sets the tab title', async () => {
+    stubApi(routes(() => Response.json(page([]))))
+    renderPage()
+
+    expect(await screen.findByText('There are no reservations yet.')).toBeDefined()
+    expect(document.title).toBe('All reservations · CityPark')
+  })
+
   it('offers the cancel for upcoming and in-progress reservations only', async () => {
     stubApi(
       routes(() =>
