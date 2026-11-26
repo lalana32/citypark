@@ -2,7 +2,9 @@ using System.Text.Json;
 
 using CityPark.Application.Admin;
 using CityPark.Application.Common;
+using CityPark.Application.Reservations;
 using CityPark.Domain.Common;
+using CityPark.Domain.Reservations;
 
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -21,6 +23,9 @@ public sealed partial class ApiExceptionHandler(
     /// <summary>The R12 conflict lists the reservations that block a deactivation under this key.</summary>
     public const string ReservationIdsKey = "reservationIds";
 
+    /// <summary>A 409 from creating a reservation names its cause under this key, so clients never parse the text.</summary>
+    public const string ConflictCodeKey = "code";
+
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
         Exception exception,
@@ -38,8 +43,7 @@ public sealed partial class ApiExceptionHandler(
             BadHttpRequestException badRequest => Unreadable(badRequest),
             NotFoundException => Problem(
                 StatusCodes.Status404NotFound, ProblemTypes.NotFound, "The resource was not found.", exception.Message),
-            DomainConflictException => Problem(
-                StatusCodes.Status409Conflict, ProblemTypes.Conflict, "The request conflicts with the current state.", exception.Message),
+            DomainConflictException conflict => Conflict(conflict),
             DomainException domain => Validation(
                 StatusCodes.Status422UnprocessableEntity,
                 ProblemTypes.UnprocessableEntity,
@@ -78,9 +82,29 @@ public sealed partial class ApiExceptionHandler(
 
     private static ProblemDetails BlockedDeactivation(SpaceHasActiveReservationsException exception)
     {
+        var problem = Conflict(exception);
+        problem.Extensions[ReservationIdsKey] = exception.ReservationIds;
+        return problem;
+    }
+
+    private static ProblemDetails Conflict(DomainConflictException exception)
+    {
         var problem = Problem(
             StatusCodes.Status409Conflict, ProblemTypes.Conflict, "The request conflicts with the current state.", exception.Message);
-        problem.Extensions[ReservationIdsKey] = exception.ReservationIds;
+
+        string? code = exception switch
+        {
+            ReservationConflictException or NoFreeSpaceException => ConflictCodes.SpaceTaken,
+            PlateOverlapException => ConflictCodes.PlateOverlap,
+            ReservationLimitException => ConflictCodes.ReservationLimit,
+            _ => null,
+        };
+
+        if (code is not null)
+        {
+            problem.Extensions[ConflictCodeKey] = code;
+        }
+
         return problem;
     }
 

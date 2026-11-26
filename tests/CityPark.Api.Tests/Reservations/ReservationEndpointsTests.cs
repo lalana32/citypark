@@ -80,6 +80,49 @@ public class ReservationEndpointsTests(ClockedApiFactory factory) : IClassFixtur
         var problem = await second.Content.ReadFromJsonAsync<JsonElement>(ct);
         Assert.Equal(409, problem.GetProperty("status").GetInt32());
         Assert.Equal("https://tools.ietf.org/html/rfc9110#section-15.5.10", problem.GetProperty("type").GetString());
+        Assert.Equal("space_taken", problem.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Create_SamePlateOverlappingInAnotherLot_Returns409PlateOverlap()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var plate = TestPlates.Next();
+        using var client = await SignedInClientAsync();
+        await CreateAsync(client, await NewSpaceAsync(ct), plate, ct);
+
+        // Another lot, a free space, the same car 10:30–11:30 local (R7).
+        using var response = await client.PostAsJsonAsync(
+            Reservations, Body(await NewSpaceAsync(ct), "2026-12-01T09:30:00Z", "2026-12-01T10:30:00Z", plate), ct);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
+        Assert.Equal("plate_overlap", problem.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Create_EleventhUpcomingReservation_Returns409ReservationLimit()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var spaceId = await NewSpaceAsync(ct);
+        using var client = await SignedInClientAsync();
+
+        // Ten back-to-back half hours from 10:00 local, all upcoming at 08:00 (R10).
+        var start = new DateTimeOffset(2026, 12, 1, 9, 0, 0, TimeSpan.Zero);
+        for (var n = 0; n < 10; n++)
+        {
+            using var created = await client.PostAsJsonAsync(
+                Reservations, new { spaceId, start, end = start.AddMinutes(30), plate = TestPlates.Next() }, ct);
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+            start = start.AddMinutes(30);
+        }
+
+        using var response = await client.PostAsJsonAsync(
+            Reservations, new { spaceId, start, end = start.AddMinutes(30), plate = TestPlates.Next() }, ct);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
+        Assert.Equal("reservation_limit", problem.GetProperty("code").GetString());
     }
 
     [Fact]
@@ -113,6 +156,8 @@ public class ReservationEndpointsTests(ClockedApiFactory factory) : IClassFixtur
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
+        Assert.Equal("space_taken", problem.GetProperty("code").GetString());
     }
 
     [Theory]

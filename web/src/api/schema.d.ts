@@ -858,7 +858,10 @@ export interface paths {
             };
         };
         put?: never;
-        /** Reserves the given space, or the first free space of the given lot, for the signed-in customer; the price is fixed now (R8). */
+        /**
+         * Reserves the given space, or the first free space of the given lot, for the signed-in customer; the price is fixed now (R8).
+         * @description A 409 names its cause in code: space_taken (R6, or no free space in the lot), plate_overlap (the plate is booked elsewhere at that time, R7) or reservation_limit (R10).
+         */
         post: {
             parameters: {
                 query?: never;
@@ -932,7 +935,8 @@ export interface paths {
                          *       "type": "https://tools.ietf.org/html/rfc9110#section-15.5.10",
                          *       "title": "The request conflicts with the current state.",
                          *       "status": 409,
-                         *       "detail": "Space 019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e02 already has an active reservation that overlaps 2026-12-01T09:00:00.0000000+00:00 – 2026-12-01T10:30:00.0000000+00:00."
+                         *       "detail": "Space 019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e02 already has an active reservation that overlaps 2026-12-01T09:00:00.0000000+00:00 – 2026-12-01T10:30:00.0000000+00:00.",
+                         *       "code": "space_taken"
                          *     }
                          */
                         "application/problem+json": components["schemas"]["ProblemDetails"];

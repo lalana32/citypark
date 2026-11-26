@@ -30,6 +30,9 @@ public static class ReservationEndpoints
         reservations.MapPost(string.Empty, CreateAsync)
             .WithValidation<CreateReservationRequest>()
             .WithSummary("Reserves the given space, or the first free space of the given lot, for the signed-in customer; the price is fixed now (R8).")
+            .WithDescription(
+                "A 409 names its cause in code: space_taken (R6, or no free space in the lot), " +
+                "plate_overlap (the plate is booked elsewhere at that time, R7) or reservation_limit (R10).")
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesValidationProblem(StatusCodes.Status422UnprocessableEntity)

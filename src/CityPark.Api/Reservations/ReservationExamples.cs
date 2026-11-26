@@ -33,6 +33,7 @@ internal static class ReservationExamples
         Status = StatusCodes.Status409Conflict,
         Detail = "Space 019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e02 already has an active reservation that overlaps " +
             "2026-12-01T09:00:00.0000000+00:00 – 2026-12-01T10:30:00.0000000+00:00.",
+        Extensions = { [ApiExceptionHandler.ConflictCodeKey] = ConflictCodes.SpaceTaken },
     };
 
     public static readonly HttpValidationProblemDetails CancelAfterStart = new(
