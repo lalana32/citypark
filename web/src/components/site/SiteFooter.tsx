@@ -2,8 +2,8 @@ import { Link } from 'react-router'
 import { Logo } from './Logo'
 import './siteFooter.css'
 
-// Placeholders until the real contact details are known (CP-039 open questions).
-const CONTACT = ['[EMAIL]', '[PHONE]', '[ADDRESS]']
+// CityPark is a demo, so the address uses the reserved .example domain (RFC 2606).
+const CONTACT_EMAIL = 'contact@citypark.example'
 
 export function SiteFooter() {
   return (
@@ -39,26 +39,14 @@ export function SiteFooter() {
           <div>
             <h2 className="footer-heading">Contact</h2>
             <ul className="footer-list">
-              {CONTACT.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h2 className="footer-heading">Legal</h2>
-            <ul className="footer-list">
               <li>
-                <Link to="/terms">Terms of use</Link>
-              </li>
-              <li>
-                <Link to="/privacy">Privacy policy</Link>
+                <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
               </li>
             </ul>
           </div>
         </div>
 
-        <p className="footer-bottom">© {new Date().getFullYear()} CityPark. All rights reserved.</p>
+        <p className="footer-bottom">© {new Date().getFullYear()} CityPark · A demo project.</p>
       </div>
     </footer>
   )
