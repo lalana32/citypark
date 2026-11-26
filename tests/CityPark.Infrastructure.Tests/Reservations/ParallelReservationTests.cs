@@ -40,9 +40,11 @@ public sealed class ParallelReservationTests : IClassFixture<PostgresFixture>, I
 
         for (var round = 1; round <= Rounds; round++)
         {
+            // A new user per round, so the rounds cannot add up to the R10 limit.
+            var user = await _fixture.AddUserAsync();
             var space = (await AddLotAsync(1, ct))[0];
 
-            var results = await ParallelRunner.RunAsync(20, _ => CreateAsync(space, Local(10), Local(11), ct));
+            var results = await ParallelRunner.RunAsync(20, _ => CreateAsync(user, space, Local(10), Local(11), ct));
 
             var successes = CountSuccesses(round, results);
             Assert.True(successes == 1, $"Round {round}: {successes} of 20 succeeded, expected 1.");
@@ -57,12 +59,13 @@ public sealed class ParallelReservationTests : IClassFixture<PostgresFixture>, I
 
         for (var round = 1; round <= Rounds; round++)
         {
+            var user = await _fixture.AddUserAsync();
             var space = (await AddLotAsync(1, ct))[0];
 
             var results = await ParallelRunner.RunAsync(20, i =>
             {
                 var start = Local(10).AddMinutes(15 * i);
-                return CreateAsync(space, start, start.AddHours(1), ct);
+                return CreateAsync(user, space, start, start.AddHours(1), ct);
             });
 
             var successes = CountSuccesses(round, results);
@@ -87,9 +90,10 @@ public sealed class ParallelReservationTests : IClassFixture<PostgresFixture>, I
 
         for (var round = 1; round <= Rounds; round++)
         {
+            var user = await _fixture.AddUserAsync();
             var spaces = await AddLotAsync(5, ct);
 
-            var results = await ParallelRunner.RunAsync(20, i => CreateAsync(spaces[i % 5], Local(10), Local(11), ct));
+            var results = await ParallelRunner.RunAsync(20, i => CreateAsync(user, spaces[i % 5], Local(10), Local(11), ct));
 
             var successes = CountSuccesses(round, results);
             Assert.True(successes == 5, $"Round {round}: {successes} of 20 succeeded, expected 5.");
@@ -108,12 +112,13 @@ public sealed class ParallelReservationTests : IClassFixture<PostgresFixture>, I
 
         for (var round = 1; round <= Rounds; round++)
         {
+            var user = await _fixture.AddUserAsync();
             var space = (await AddLotAsync(1, ct))[0];
 
             var results = await ParallelRunner.RunAsync(10, i =>
             {
                 var start = Local(10).AddMinutes(30 * i);
-                return CreateAsync(space, start, start.AddMinutes(30), ct);
+                return CreateAsync(user, space, start, start.AddMinutes(30), ct);
             });
 
             var successes = CountSuccesses(round, results);
@@ -129,10 +134,11 @@ public sealed class ParallelReservationTests : IClassFixture<PostgresFixture>, I
 
         for (var round = 1; round <= Rounds; round++)
         {
+            var user = await _fixture.AddUserAsync();
             var lot = await AddLotEntityAsync(5, ct);
 
             // Every request sees the same five candidates, so most lose the first insert and must retry.
-            var results = await ParallelRunner.RunAsync(20, _ => CreateInLotAsync(lot.Id, Local(10), Local(11), ct));
+            var results = await ParallelRunner.RunAsync(20, _ => CreateInLotAsync(user, lot.Id, Local(10), Local(11), ct));
 
             var successes = CountSuccesses<NoFreeSpaceException>(round, results);
             Assert.True(successes == 5, $"Round {round}: {successes} of 20 succeeded, expected 5.");
@@ -152,6 +158,7 @@ public sealed class ParallelReservationTests : IClassFixture<PostgresFixture>, I
 
         for (var round = 1; round <= Rounds; round++)
         {
+            var user = await _fixture.AddUserAsync();
             var plate = TestPlates.Next();
             var spaces = new List<Guid>();
             for (var n = 0; n < 20; n++)
@@ -159,7 +166,7 @@ public sealed class ParallelReservationTests : IClassFixture<PostgresFixture>, I
                 spaces.Add((await AddLotAsync(1, ct))[0]);
             }
 
-            var results = await ParallelRunner.RunAsync(20, i => CreateAsync(spaces[i], Local(10), Local(11), ct, plate));
+            var results = await ParallelRunner.RunAsync(20, i => CreateAsync(user, spaces[i], Local(10), Local(11), ct, plate));
 
             var successes = CountSuccesses<PlateOverlapException>(round, results);
             Assert.True(successes == 1, $"Round {round}: {successes} of 20 succeeded, expected 1.");
@@ -181,19 +188,19 @@ public sealed class ParallelReservationTests : IClassFixture<PostgresFixture>, I
         return results.Count(r => r is null);
     }
 
-    private async Task CreateInLotAsync(Guid lotId, DateTimeOffset start, DateTimeOffset end, CancellationToken ct)
+    private async Task CreateInLotAsync(Guid userId, Guid lotId, DateTimeOffset start, DateTimeOffset end, CancellationToken ct)
     {
         await using var scope = _services.CreateAsyncScope();
         var service = scope.ServiceProvider.GetRequiredService<CreateReservationService>();
-        await service.CreateInLotAsync(_fixture.UserId, lotId, start, end, TestPlates.Next(), ct);
+        await service.CreateInLotAsync(userId, lotId, start, end, TestPlates.Next(), ct);
     }
 
     private async Task CreateAsync(
-        Guid spaceId, DateTimeOffset start, DateTimeOffset end, CancellationToken ct, string? plate = null)
+        Guid userId, Guid spaceId, DateTimeOffset start, DateTimeOffset end, CancellationToken ct, string? plate = null)
     {
         await using var scope = _services.CreateAsyncScope();
         var service = scope.ServiceProvider.GetRequiredService<CreateReservationService>();
-        await service.CreateAsync(_fixture.UserId, spaceId, start, end, plate ?? TestPlates.Next(), ct);
+        await service.CreateAsync(userId, spaceId, start, end, plate ?? TestPlates.Next(), ct);
     }
 
     private async Task<int> CountActiveAsync(Guid spaceId, CancellationToken ct)

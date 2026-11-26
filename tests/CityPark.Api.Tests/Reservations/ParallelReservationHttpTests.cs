@@ -20,13 +20,15 @@ public class ParallelReservationHttpTests(ClockedApiFactory factory) : IClassFix
     public async Task TwoParallelPosts_OverlappingOnOneSpace_ReturnOne201AndOne409()
     {
         var ct = TestContext.Current.CancellationToken;
-        using var customerA = AuthClient.Create(factory);
-        using var customerB = AuthClient.Create(factory);
-        await AuthClient.SignInNewCustomerAsync(customerA);
-        await AuthClient.SignInNewCustomerAsync(customerB);
 
         for (var round = 1; round <= Rounds; round++)
         {
+            // New customers per round, so the winner of every round cannot reach the R10 limit.
+            using var customerA = AuthClient.Create(factory);
+            using var customerB = AuthClient.Create(factory);
+            await AuthClient.SignInNewCustomerAsync(customerA);
+            await AuthClient.SignInNewCustomerAsync(customerB);
+
             var lot = await TestLots.AddAsync(factory, TestLots.UniqueName("Race"), spaces: 1, inactiveSpaces: 0, ct);
             var spaceId = lot.Spaces.Single().Id;
 
