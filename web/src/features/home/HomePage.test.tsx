@@ -29,6 +29,20 @@ describe('home page', () => {
     expect(screen.getByRole('link', { name: 'Find parking' }).getAttribute('href')).toBe('/lots')
   })
 
+  it('has the hero title as its only h1', () => {
+    renderHome()
+
+    expect(screen.getAllByRole('heading', { level: 1 }).map((heading) => heading.textContent)).toEqual([
+      'Stop circling. Start parking.',
+    ])
+  })
+
+  it('shows the hero button as text only', () => {
+    renderHome()
+
+    expect(screen.getByRole('link', { name: 'Find parking' }).querySelector('svg')).toBeNull()
+  })
+
   it('hides the decorative map from assistive technology', () => {
     const { container } = renderHome()
 
