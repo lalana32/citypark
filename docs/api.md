@@ -1,6 +1,67 @@
 # API contract
 
-This file describes the contract of the use cases that the HTTP API will expose. Endpoints are added by later cards; the rules here hold for them. Routes, the error contract and health checks are in [api-conventions.md](api-conventions.md).
+This file describes every endpoint of the HTTP API: what it returns, which errors it gives and why. The rules that hold for all endpoints (versioning, the ProblemDetails error contract, health checks) are in [api-conventions.md](api-conventions.md); sign-in, the session cookie and CSRF are in [auth.md](auth.md).
+
+## OpenAPI
+
+The machine-readable contract is the OpenAPI 3.1 document. This file explains it; when the two disagree, the document is what the API really does.
+
+| Where | URL or path |
+| --- | --- |
+| Running API, every environment | `/openapi/v1.json`, for example <http://localhost:8080/openapi/v1.json> on the [Docker stack](../README.md#quick-start) or <http://localhost:5114/openapi/v1.json> with `dotnet run` |
+| Interactive UI (Scalar), Development only | <http://localhost:5114/scalar>, opened by `dotnet run --project src/CityPark.Api --launch-profile http` |
+| Committed copy in the repository | [`web/openapi/v1.json`](../web/openapi/v1.json) |
+
+- The committed copy is kept equal to the API by `OpenApiSnapshotTests`, and the frontend types (`web/src/api/schema.d.ts`) are generated from it. CI fails when either is out of date ([README](../README.md#api-types)).
+- Every endpoint declares all its responses, and the main ones carry examples built from the real response types ([api-conventions.md](api-conventions.md#openapi)).
+- Tags group the endpoints as in the overview below: `Authentication`, `Lots`, `Reservations`, `Admin`, `Health`.
+
+## Endpoint overview
+
+| Method and route | Who | Success | Details |
+| --- | --- | --- | --- |
+| `POST /api/v1/auth/register` | anyone, rate limited | 201 | [auth.md](auth.md#endpoints) |
+| `POST /api/v1/auth/login` | anyone, rate limited | 200, sets the cookie | [auth.md](auth.md#endpoints) |
+| `POST /api/v1/auth/logout` | signed in | 204 | [auth.md](auth.md#endpoints) |
+| `GET /api/v1/auth/me` | signed in | 200 | [auth.md](auth.md#endpoints) |
+| `GET /api/v1/auth/csrf` | anyone | 200 | [auth.md](auth.md#csrf-protection) |
+| `GET /api/v1/lots` | anyone | 200, paged | [Lots](#lots) |
+| `GET /api/v1/lots/{id}` | anyone | 200 | [Lots](#lots) |
+| `GET /api/v1/lots/{id}/availability` | anyone | 200 | [Availability](#availability) |
+| `GET /api/v1/lots/{id}/quote` | anyone | 200 | [Price quote](#price-quote) |
+| `POST /api/v1/reservations` | signed in | 201 | [Own reservations](#own-reservations) |
+| `GET /api/v1/reservations` | signed in | 200, paged | [Own reservations](#own-reservations) |
+| `GET /api/v1/reservations/{id}` | signed in, owner | 200 | [Own reservations](#own-reservations) |
+| `POST /api/v1/reservations/{id}/cancel` | signed in, owner | 204 | [Own reservations](#own-reservations) |
+| `POST /api/v1/admin/lots` | Admin | 201 | [Admin: lots and spaces](#admin-lots-and-spaces) |
+| `PUT /api/v1/admin/lots/{id}` | Admin | 200 | [Admin: lots and spaces](#admin-lots-and-spaces) |
+| `POST /api/v1/admin/lots/{id}/spaces` | Admin | 201 | [Admin: lots and spaces](#admin-lots-and-spaces) |
+| `POST /api/v1/admin/lots/{lotId}/spaces/{spaceId}/deactivate` | Admin | 204 | [Admin: lots and spaces](#admin-lots-and-spaces) |
+| `GET /api/v1/admin/reservations` | Admin | 200, paged | [Admin: reservations](#admin-reservations) |
+| `POST /api/v1/admin/reservations/{id}/cancel` | Admin | 200 | [Admin: reservations](#admin-reservations) |
+| `GET /health/live` | anyone | 200 | [api-conventions.md](api-conventions.md#health-checks) |
+| `GET /health/ready` | anyone | 200 or 503 | [api-conventions.md](api-conventions.md#health-checks) |
+
+Common to all `/api/v1` routes:
+
+- Every `POST`, `PUT`, `PATCH` and `DELETE` needs the `X-XSRF-TOKEN` header from `GET /auth/csrf`, otherwise **400** ([auth.md](auth.md#csrf-protection)).
+- A route that needs sign-in answers **401** without a valid session cookie, and an Admin route answers **403** to a customer, before the body is validated.
+- Every error is `application/problem+json`. **400** is a malformed request, **404** an unknown or foreign resource, **409** a conflict with the current state, **422** a broken business rule ([api-conventions.md](api-conventions.md#error-contract)).
+
+## Conflicts (409)
+
+A 409 means the request is valid but the current data does not allow it; sending it again later may succeed. Every 409 except the one on register comes from a `DomainConflictException`, which `ApiExceptionHandler` maps in one place.
+
+| Case | Rule | Raised by | Decided by |
+| --- | --- | --- | --- |
+| The given space already has an overlapping Active reservation | R6 | `ReservationConflictException` | Exclusion constraint `ex_reservations_space_no_overlap`, SQLSTATE `23P01` ([ADR-002](adr/0002-overlap-prevention-with-exclusion-constraint.md)) |
+| No space of the lot is free, or all candidates were lost to parallel requests | R6 | `NoFreeSpaceException` | The same constraint, once per candidate ([Automatic space assignment](#automatic-space-assignment)) |
+| The reservation is already cancelled, also by a simultaneous request | R9 | `DomainConflictException` | Domain status check, or the `xmin` concurrency token ([ADR-005](adr/0005-optimistic-concurrency-on-xmin-for-cancellation.md)) |
+| The lot already has a space with this label | I1 | `DomainConflictException` | Domain check in `ParkingLot`, and the unique index `ix_parking_spaces_lot_id_label` (`23505`) for parallel requests |
+| The space has Active reservations that have not ended | R12 | `SpaceHasActiveReservationsException`, lists `reservationIds` | Application check |
+| The email is already registered | – | The register handler returns the 409 itself (`TypedResults.Problem`) | Identity ([D5](decisions.md#d5-register-reveals-that-an-email-is-taken)) |
+
+The database errors are recognised by SQLSTATE **and** constraint name in `PostgresDatabaseErrors`, never by message text. Any other database error is not turned into a 409; it stays a 500.
 
 ## Pagination
 
