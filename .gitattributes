@@ -1,0 +1,2 @@
+# WSL and Linux bash reject CRLF, so shell scripts stay LF whatever core.autocrlf says.
+*.sh text eol=lf
