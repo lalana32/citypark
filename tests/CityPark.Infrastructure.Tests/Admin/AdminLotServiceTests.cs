@@ -190,7 +190,7 @@ public sealed class AdminLotServiceTests(PostgresFixture fixture) : IClassFixtur
     {
         await using var db = fixture.CreateDbContext();
         var service = new CreateReservationService(db, new PostgresDatabaseErrors(), new FakeTimeProvider(Local(8)), Sarajevo);
-        return await service.CreateAsync(fixture.UserId, spaceId, Local(10), Local(11), "A12K345", ct);
+        return await service.CreateAsync(fixture.UserId, spaceId, Local(10), Local(11), TestPlates.Next(), ct);
     }
 
     private async Task<ParkingLot> LotAsync(Guid lotId, CancellationToken ct)

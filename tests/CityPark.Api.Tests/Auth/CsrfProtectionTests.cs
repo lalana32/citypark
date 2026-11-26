@@ -127,7 +127,7 @@ public class CsrfProtectionTests(ClockedApiFactory factory) : IClassFixture<Cloc
 
     // 10:00–11:30 local on the fixed "now" of ClockedApiFactory.
     private static object Reservation(Guid spaceId) =>
-        new { spaceId, start = "2026-12-01T09:00:00Z", end = "2026-12-01T10:30:00Z", plate = "A12K345" };
+        new { spaceId, start = "2026-12-01T09:00:00Z", end = "2026-12-01T10:30:00Z", plate = TestPlates.Next() };
 
     private async Task<Guid> NewSpaceAsync(CancellationToken ct)
     {

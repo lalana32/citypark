@@ -206,7 +206,7 @@ public sealed class AvailabilityServiceTests(PostgresFixture fixture) : IClassFi
     {
         var space = lot.Spaces.Single(s => s.Label == label);
         var reservation = Reservation.Create(
-            lot, space, new TimeInterval(start, end), new LicensePlate("A12K345"), fixture.UserId, Sarajevo, Clock);
+            lot, space, new TimeInterval(start, end), new LicensePlate(TestPlates.Next()), fixture.UserId, Sarajevo, Clock);
 
         if (status == ReservationStatus.Cancelled)
         {

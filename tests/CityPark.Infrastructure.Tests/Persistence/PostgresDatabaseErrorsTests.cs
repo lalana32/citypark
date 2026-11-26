@@ -127,7 +127,7 @@ public sealed class PostgresDatabaseErrorsTests(PostgresFixture fixture) : IClas
     private async Task AddReservationAsync(ParkingLot lot, ParkingSpace space, Guid userId, CancellationToken ct)
     {
         var interval = new TimeInterval(Day.AddHours(10), Day.AddHours(12));
-        var reservation = Reservation.Create(lot, space, interval, new LicensePlate("A12K345"), userId, Sarajevo, Clock);
+        var reservation = Reservation.Create(lot, space, interval, new LicensePlate(TestPlates.Next()), userId, Sarajevo, Clock);
 
         await using var db = fixture.CreateDbContext();
         db.Reservations.Add(reservation);

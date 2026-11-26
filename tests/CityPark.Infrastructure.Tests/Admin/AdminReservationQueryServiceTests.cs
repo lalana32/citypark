@@ -16,8 +16,6 @@ public sealed class AdminReservationQueryServiceTests(PostgresFixture fixture) :
 
     private static readonly DateTimeOffset BookedAt = Local(1, 8);
 
-    private static int _plateNumber;
-
     // December 2026 is winter time in Sarajevo (UTC+1).
     private static DateTimeOffset Local(int day, int hour, int minute = 0) =>
         new DateTimeOffset(2026, 12, day, hour, minute, 0, TimeSpan.FromHours(1)).ToUniversalTime();
@@ -103,17 +101,11 @@ public sealed class AdminReservationQueryServiceTests(PostgresFixture fixture) :
         await Assert.ThrowsAsync<NotFoundException>(() => service.GetAsync(Guid.CreateVersion7(), ct));
     }
 
-    private static LicensePlate NextPlate()
-    {
-        var n = Interlocked.Increment(ref _plateNumber);
-        return new LicensePlate($"J{n / 1000:00}K{n % 1000:000}");
-    }
-
     private static Reservation Book(
         ParkingLot lot, ParkingSpace space, Guid userId, DateTimeOffset start, DateTimeOffset end, bool cancel = false)
     {
         var clock = new FakeTimeProvider(BookedAt);
-        var reservation = Reservation.Create(lot, space, new TimeInterval(start, end), NextPlate(), userId, Sarajevo, clock);
+        var reservation = Reservation.Create(lot, space, new TimeInterval(start, end), new LicensePlate(TestPlates.Next()), userId, Sarajevo, clock);
 
         if (cancel)
         {

@@ -16,8 +16,6 @@ namespace CityPark.Infrastructure.Tests.Reservations;
 // Each test creates its own lot, so tests sharing the fixture's database cannot see each other's data.
 public sealed class CreateReservationServiceTests(PostgresFixture fixture) : IClassFixture<PostgresFixture>
 {
-    private const string Plate = "A12K345";
-
     private static readonly TimeZoneInfo Sarajevo = TimeZoneInfo.FindSystemTimeZoneById("Europe/Sarajevo");
 
     // Tuesday 1 December 2026 is winter time in Sarajevo (UTC+1). Times in the tests are local.
@@ -277,7 +275,7 @@ public sealed class CreateReservationServiceTests(PostgresFixture fixture) : ICl
     {
         await using var db = fixture.CreateDbContext();
         var service = new CreateReservationService(db, new PostgresDatabaseErrors(), Clock, Sarajevo);
-        return await service.CreateInLotAsync(fixture.UserId, lotId, start, end, Plate, ct);
+        return await service.CreateInLotAsync(fixture.UserId, lotId, start, end, TestPlates.Next(), ct);
     }
 
     private async Task<int> CountInLotAsync(ParkingLot lot, CancellationToken ct)
@@ -293,12 +291,12 @@ public sealed class CreateReservationServiceTests(PostgresFixture fixture) : ICl
         DateTimeOffset start,
         DateTimeOffset end,
         CancellationToken ct,
-        string plate = Plate,
+        string? plate = null,
         Guid? userId = null)
     {
         await using var db = fixture.CreateDbContext();
         var service = new CreateReservationService(db, new PostgresDatabaseErrors(), Clock, Sarajevo);
-        return await service.CreateAsync(userId ?? fixture.UserId, spaceId, start, end, plate, ct);
+        return await service.CreateAsync(userId ?? fixture.UserId, spaceId, start, end, plate ?? TestPlates.Next(), ct);
     }
 
     private async Task<Exception?> TryCreateAsync(Guid spaceId, DateTimeOffset start, DateTimeOffset end, CancellationToken ct)

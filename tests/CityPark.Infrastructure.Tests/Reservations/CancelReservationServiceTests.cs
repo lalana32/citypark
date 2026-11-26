@@ -122,7 +122,7 @@ public sealed class CancelReservationServiceTests(PostgresFixture fixture) : ICl
     {
         await using var db = fixture.CreateDbContext();
         var service = new CreateReservationService(db, new PostgresDatabaseErrors(), new FakeTimeProvider(Local(8)), Sarajevo);
-        return await service.CreateAsync(fixture.UserId, spaceId, start, end, "A12K345", ct);
+        return await service.CreateAsync(fixture.UserId, spaceId, start, end, TestPlates.Next(), ct);
     }
 
     private async Task<Reservation> BookTenToElevenAsync(CancellationToken ct)

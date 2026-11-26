@@ -147,7 +147,7 @@ public class AdminEndpointsTests(ClockedApiFactory factory) : IClassFixture<Cloc
     // 10:00–11:30 local at 2.50 BAM: 90 minutes, billed as 2 hours, so 5.00 BAM (R8).
     private static async Task<Guid> ReserveTenToHalfPastElevenAsync(HttpClient customer, Guid spaceId, CancellationToken ct)
     {
-        var body = new { spaceId, start = "2026-12-01T09:00:00Z", end = "2026-12-01T10:30:00Z", plate = "A12K345" };
+        var body = new { spaceId, start = "2026-12-01T09:00:00Z", end = "2026-12-01T10:30:00Z", plate = TestPlates.Next() };
 
         using var response = await customer.PostAsJsonAsync(Relative("/api/v1/reservations"), body, ct);
 
