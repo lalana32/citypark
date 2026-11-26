@@ -22,6 +22,16 @@ public sealed class PostgresFixture : IAsyncLifetime
     /// <summary>Connection string for the shared, fully migrated database.</summary>
     public string ConnectionString => _container.GetConnectionString();
 
+    /// <summary>A new Identity user, for tests that must stay under the per-user limit (R10).</summary>
+    public async Task<Guid> AddUserAsync()
+    {
+        var id = Guid.CreateVersion7();
+        await using var db = CreateDbContext();
+        db.Users.Add(new IdentityUser<Guid> { Id = id, UserName = $"user-{id:N}" });
+        await db.SaveChangesAsync();
+        return id;
+    }
+
     public AppDbContext CreateDbContext() =>
         new(AppDbContextOptions.Create(_container.GetConnectionString()));
 
