@@ -4,12 +4,41 @@ import {
   canCancel,
   cancelErrorMessage,
   formatPrice,
+  BookingRuleError,
   groupReservations,
+  PLATE_OVERLAP,
   type Reservation,
+  RESERVATION_LIMIT,
   RESERVATION_NOT_FOUND,
+  SpaceTakenError,
   toBookingErrors,
+  toConflictError,
   UNEXPECTED_ERROR,
 } from './api'
+
+describe('toConflictError', () => {
+  it('sends a taken space back to the space plan', () => {
+    expect(toConflictError({ code: 'space_taken' })).toBeInstanceOf(SpaceTakenError)
+  })
+
+  it('treats a 409 without a code as a taken space', () => {
+    expect(toConflictError(undefined)).toBeInstanceOf(SpaceTakenError)
+  })
+
+  it('puts a plate overlap next to the plate field', () => {
+    const error = toConflictError({ code: 'plate_overlap' })
+
+    expect(error).toBeInstanceOf(BookingRuleError)
+    expect((error as BookingRuleError).errors).toEqual({ fields: { plate: PLATE_OVERLAP } })
+  })
+
+  it('puts the reservation limit above the form', () => {
+    const error = toConflictError({ code: 'reservation_limit' })
+
+    expect(error).toBeInstanceOf(BookingRuleError)
+    expect((error as BookingRuleError).errors).toEqual({ fields: {}, form: RESERVATION_LIMIT })
+  })
+})
 
 describe('toBookingErrors', () => {
   it('puts a field rule next to its field', () => {

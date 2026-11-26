@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { LoginPage, SESSION_ENDED } from '../auth/LoginPage'
 import { RegisterPage } from '../auth/RegisterPage'
-import { SPACE_TAKEN } from '../reservations/api'
+import { PLATE_OVERLAP, RESERVATION_LIMIT, SPACE_TAKEN } from '../reservations/api'
 import {
   ANA,
   availabilityOf,
@@ -119,7 +119,7 @@ describe('booking a space', () => {
 
   it('says the space was just taken and reloads the free spaces after a 409', async () => {
     const detail = `Space ${A02.id} already has an active reservation that overlaps the interval.`
-    const fetchMock = stubApi(routes(() => problem(409, { detail }), [[A02, A03], [A03]]))
+    const fetchMock = stubApi(routes(() => problem(409, { detail, code: 'space_taken' }), [[A02, A03], [A03]]))
     renderPage()
 
     await bookA02()
@@ -132,6 +132,28 @@ describe('booking a space', () => {
     expect(screen.queryByRole('button', { name: 'Confirm booking' })).toBeNull()
     expect(screen.getByText('Not chosen yet')).toBeDefined()
     expect(calls(fetchMock, `GET /api/v1/lots/${CENTAR.id}/availability`)).toHaveLength(2)
+  })
+
+  it('shows a plate booked elsewhere under the field and keeps the space after a 409', async () => {
+    const fetchMock = stubApi(routes(() => problem(409, { code: 'plate_overlap' })))
+    renderPage()
+
+    await bookA02()
+
+    const field = await screen.findByText(PLATE_OVERLAP)
+    expect(screen.getByLabelText('License plate').getAttribute('aria-describedby')).toContain(field.id)
+    expect(screen.getByRole('button', { name: 'Confirm booking' })).toBeDefined()
+    expect(calls(fetchMock, `GET /api/v1/lots/${CENTAR.id}/availability`)).toHaveLength(1)
+  })
+
+  it('says the reservation limit is reached in the booking panel after a 409', async () => {
+    stubApi(routes(() => problem(409, { code: 'reservation_limit' })))
+    renderPage()
+
+    await bookA02()
+
+    expect((await screen.findByRole('alert')).textContent).toBe(RESERVATION_LIMIT)
+    expect(screen.getByRole('button', { name: 'Confirm booking' })).toBeDefined()
   })
 
   it('shows an invalid plate under the field and keeps it editable after a 422', async () => {

@@ -15,7 +15,7 @@ export function BookingPanel({ spaceLabel, pending, error, onConfirm, onDismissE
   const [plate, setPlate] = useState('')
 
   const errors = error instanceof BookingRuleError ? error.errors : undefined
-  // The page handles 409 and 401 itself.
+  // The page handles a taken space (409) and 401 itself.
   const unexpected = error !== null && !errors && !(error instanceof SpaceTakenError) && !(error instanceof SignedOutError)
   const alert = unexpected
     ? UNEXPECTED_ERROR
