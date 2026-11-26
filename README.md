@@ -553,6 +553,7 @@ run the API again.
 | [docs/performance.md](docs/performance.md) | Query plans of availability and the overlap check |
 | [docs/adr/](docs/adr/README.md) | Architecture decisions and the alternatives rejected |
 | [docs/decisions.md](docs/decisions.md) | Smaller tooling decisions |
+| [AI_USAGE.md](AI_USAGE.md) | Where AI assistance was used and how its output was verified |
 
 ## Known limitations
 
