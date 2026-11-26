@@ -31,7 +31,11 @@ export function AdminLotsPage() {
           </button>
         )}
       </header>
-      {saved && <p role="status">{saved}</p>}
+      {saved && (
+        <p role="status" className="admin-notice">
+          {saved}
+        </p>
+      )}
       {editing?.kind === 'lot' && (
         <LotEditor
           key={editing.lot?.id ?? 'new'}
@@ -52,47 +56,69 @@ export function AdminLotsPage() {
         />
       )}
 
-      {lots.isPending && <p role="status">Loading lots…</p>}
-      {lots.isError && <p role="alert">We could not load the parking lots. Please try again.</p>}
-      {lots.data && lots.data.items.length === 0 && <p>There are no parking lots yet.</p>}
+      {lots.isPending && (
+        <p role="status" className="admin-loading">
+          Loading lots…
+        </p>
+      )}
+      {lots.isError && (
+        <p role="alert" className="admin-alert">
+          We could not load the parking lots. Please try again.
+        </p>
+      )}
+      {lots.data && lots.data.items.length === 0 && <p className="admin-empty">There are no parking lots yet.</p>}
       {lots.data && lots.data.items.length > 0 && (
         <>
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Lot</th>
-                <th scope="col">Address</th>
-                <th scope="col">Rate</th>
-                <th scope="col">Open</th>
-                <th scope="col">Spaces</th>
-                <th scope="col">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lots.data.items.map((lot) => (
-                <tr key={lot.id}>
-                  <td>{lot.name}</td>
-                  <td>{lot.address}</td>
-                  <td>{formatRate(lot)}</td>
-                  <td>{formatWindow(lot)}</td>
-                  <td>{lot.totalSpaces}</td>
-                  <td>
-                    <button type="button" onClick={() => open({ kind: 'lot', lot })} aria-label={`Edit ${lot.name}`}>
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => open({ kind: 'space', lot })}
-                      aria-label={`Add a space to ${lot.name}`}
-                    >
-                      Add space
-                    </button>
-                  </td>
+          <div className="site-card admin-table-card">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th scope="col">Lot</th>
+                  <th scope="col">Address</th>
+                  <th scope="col">Rate</th>
+                  <th scope="col">Open</th>
+                  <th scope="col" className="admin-num">
+                    Spaces
+                  </th>
+                  <th scope="col">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <Pager page={page} totalPages={Number(lots.data.totalPages ?? 1)} onChange={setPage} />
+              </thead>
+              <tbody>
+                {lots.data.items.map((lot) => (
+                  <tr key={lot.id}>
+                    <td className="admin-strong">{lot.name}</td>
+                    <td>{lot.address}</td>
+                    <td className="admin-nowrap">{formatRate(lot)}</td>
+                    <td className="admin-nowrap">{formatWindow(lot)}</td>
+                    <td className="admin-num">{lot.totalSpaces}</td>
+                    <td>
+                      <div className="admin-actions">
+                        <button
+                          type="button"
+                          className="site-btn site-btn-secondary site-btn-small"
+                          onClick={() => open({ kind: 'lot', lot })}
+                          aria-label={`Edit ${lot.name}`}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="site-btn site-btn-secondary site-btn-small"
+                          onClick={() => open({ kind: 'space', lot })}
+                          aria-label={`Add a space to ${lot.name}`}
+                        >
+                          Add space
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="admin-pager">
+            <Pager page={page} totalPages={Number(lots.data.totalPages ?? 1)} onChange={setPage} />
+          </div>
         </>
       )}
     </section>
