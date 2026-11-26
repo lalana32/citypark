@@ -30,6 +30,24 @@ public sealed class PostgresDatabaseErrorsTests(PostgresFixture fixture) : IClas
         var ex = await Assert.ThrowsAsync<DbUpdateException>(() => AddReservationAsync(lot, space, fixture.UserId, ct));
 
         Assert.True(_errors.IsSpaceOverlapViolation(ex));
+        Assert.False(_errors.IsPlateOverlapViolation(ex));
+    }
+
+    // Both overlap constraints raise 23P01; only the constraint name tells them apart.
+    [Fact]
+    public async Task SamePlateOverlappingInAnotherLot_IsAPlateOverlapViolation_NotASpaceOne()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var plate = TestPlates.Next();
+        var (firstLot, first) = await AddSpaceAsync(ct);
+        var (secondLot, second) = await AddSpaceAsync(ct);
+        await AddReservationAsync(firstLot, first, fixture.UserId, ct, plate);
+
+        var ex = await Assert.ThrowsAsync<DbUpdateException>(() =>
+            AddReservationAsync(secondLot, second, fixture.UserId, ct, plate));
+
+        Assert.True(_errors.IsPlateOverlapViolation(ex));
+        Assert.False(_errors.IsSpaceOverlapViolation(ex));
     }
 
     [Fact]
@@ -44,26 +62,16 @@ public sealed class PostgresDatabaseErrorsTests(PostgresFixture fixture) : IClas
 
         Assert.Equal(PostgresErrorCodes.ForeignKeyViolation, Assert.IsType<PostgresException>(ex.InnerException).SqlState);
         Assert.False(_errors.IsSpaceOverlapViolation(ex));
+        Assert.False(_errors.IsPlateOverlapViolation(ex));
     }
 
     [Fact]
-    public void ExclusionViolation_OnAnotherConstraint_IsNotASpaceOverlapViolation()
+    public void DbUpdateException_WithoutPostgresCause_IsNoOverlapViolation()
     {
-        // The future plate constraint (R7) raises 23P01 too; only the name tells them apart.
-        var pg = new PostgresException(
-            "conflicting key value violates exclusion constraint",
-            "ERROR",
-            "ERROR",
-            PostgresErrorCodes.ExclusionViolation,
-            constraintName: "ex_reservations_plate_no_overlap");
+        var ex = new DbUpdateException("save failed");
 
-        Assert.False(_errors.IsSpaceOverlapViolation(new DbUpdateException("save failed", pg)));
-    }
-
-    [Fact]
-    public void DbUpdateException_WithoutPostgresCause_IsNotASpaceOverlapViolation()
-    {
-        Assert.False(_errors.IsSpaceOverlapViolation(new DbUpdateException("save failed")));
+        Assert.False(_errors.IsSpaceOverlapViolation(ex));
+        Assert.False(_errors.IsPlateOverlapViolation(ex));
     }
 
     [Fact]
@@ -124,10 +132,12 @@ public sealed class PostgresDatabaseErrorsTests(PostgresFixture fixture) : IClas
         return (lot, space);
     }
 
-    private async Task AddReservationAsync(ParkingLot lot, ParkingSpace space, Guid userId, CancellationToken ct)
+    private async Task AddReservationAsync(
+        ParkingLot lot, ParkingSpace space, Guid userId, CancellationToken ct, string? plate = null)
     {
         var interval = new TimeInterval(Day.AddHours(10), Day.AddHours(12));
-        var reservation = Reservation.Create(lot, space, interval, new LicensePlate(TestPlates.Next()), userId, Sarajevo, Clock);
+        var reservation = Reservation.Create(
+            lot, space, interval, new LicensePlate(plate ?? TestPlates.Next()), userId, Sarajevo, Clock);
 
         await using var db = fixture.CreateDbContext();
         db.Reservations.Add(reservation);

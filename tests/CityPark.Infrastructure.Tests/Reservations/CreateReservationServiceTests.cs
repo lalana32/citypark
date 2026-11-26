@@ -119,6 +119,24 @@ public sealed class CreateReservationServiceTests(PostgresFixture fixture) : ICl
         Assert.Equal(1, await CountAsync(space.Id, ct));
     }
 
+    [Fact]
+    public async Task SamePlate_OverlappingInAnotherLot_ThrowsPlateOverlapAndWritesNothing()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var plate = TestPlates.Next();
+        var first = Space(await AddLotAsync(ct), "A-1");
+        var second = Space(await AddLotAsync(ct), "A-1");
+        await CreateAsync(first.Id, Local(10), Local(11), ct, plate);
+
+        // R7: a free space does not help when the car is already booked elsewhere.
+        var ex = await Assert.ThrowsAsync<PlateOverlapException>(() =>
+            CreateAsync(second.Id, Local(10, 30), Local(11, 30), ct, plate));
+
+        Assert.Equal(new LicensePlate(plate), ex.Plate);
+        Assert.IsType<DbUpdateException>(ex.InnerException);
+        Assert.Equal(0, await CountAsync(second.Id, ct));
+    }
+
     [Theory]
     [InlineData(21, 30, 22, 30)] // After closing time (R3).
     [InlineData(10, 10, 11, 10)] // Off the 15-minute grid (R1).
@@ -251,6 +269,21 @@ public sealed class CreateReservationServiceTests(PostgresFixture fixture) : ICl
         Assert.Equal(3, await CountInLotAsync(lot, ct));
     }
 
+    // Every free space would fail the same way, so the loop must stop instead of ending in NoFreeSpace.
+    [Fact]
+    public async Task InLot_PlateBookedInAnotherLot_ThrowsPlateOverlapAndWritesNothing()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var plate = TestPlates.Next();
+        var elsewhere = Space(await AddLotAsync(ct), "A-1");
+        var lot = await AddLotAsync(ct);
+        await CreateAsync(elsewhere.Id, Local(10), Local(11), ct, plate);
+
+        await Assert.ThrowsAsync<PlateOverlapException>(() => CreateInLotAsync(lot.Id, Local(10, 30), Local(11, 30), ct, plate));
+
+        Assert.Equal(0, await CountInLotAsync(lot, ct));
+    }
+
     [Fact]
     public async Task InLot_DomainRuleBroken_ThrowsValidationErrorAndWritesNothing()
     {
@@ -271,11 +304,12 @@ public sealed class CreateReservationServiceTests(PostgresFixture fixture) : ICl
         await Assert.ThrowsAsync<NotFoundException>(() => CreateInLotAsync(Guid.CreateVersion7(), Local(10), Local(11), ct));
     }
 
-    private async Task<Reservation> CreateInLotAsync(Guid lotId, DateTimeOffset start, DateTimeOffset end, CancellationToken ct)
+    private async Task<Reservation> CreateInLotAsync(
+        Guid lotId, DateTimeOffset start, DateTimeOffset end, CancellationToken ct, string? plate = null)
     {
         await using var db = fixture.CreateDbContext();
         var service = new CreateReservationService(db, new PostgresDatabaseErrors(), Clock, Sarajevo);
-        return await service.CreateInLotAsync(fixture.UserId, lotId, start, end, TestPlates.Next(), ct);
+        return await service.CreateInLotAsync(fixture.UserId, lotId, start, end, plate ?? TestPlates.Next(), ct);
     }
 
     private async Task<int> CountInLotAsync(ParkingLot lot, CancellationToken ct)
