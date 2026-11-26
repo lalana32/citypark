@@ -16,45 +16,61 @@ export function AdminReservationsPage() {
       <header className="admin-header">
         <h2 className="site-h2 site-display">All reservations</h2>
       </header>
-      {reservations.isPending && <p role="status">Loading reservations…</p>}
-      {reservations.isError && <p role="alert">We could not load the reservations. Please try again.</p>}
-      {reservations.data && reservations.data.items.length === 0 && <p>There are no reservations yet.</p>}
+      {reservations.isPending && (
+        <p role="status" className="admin-loading">
+          Loading reservations…
+        </p>
+      )}
+      {reservations.isError && (
+        <p role="alert" className="admin-alert">
+          We could not load the reservations. Please try again.
+        </p>
+      )}
+      {reservations.data && reservations.data.items.length === 0 && (
+        <p className="admin-empty">There are no reservations yet.</p>
+      )}
       {reservations.data && reservations.data.items.length > 0 && (
         <>
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Lot</th>
-                <th scope="col">Space</th>
-                <th scope="col">From</th>
-                <th scope="col">To</th>
-                <th scope="col">Plate</th>
-                <th scope="col">Price</th>
-                <th scope="col">State</th>
-                <th scope="col">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reservations.data.items.map((reservation) => (
-                <tr key={reservation.id}>
-                  <td>{reservation.lotName}</td>
-                  <td>{reservation.spaceLabel}</td>
-                  <td>{formatLotDateTime(reservation.start)}</td>
-                  <td>{formatLotDateTime(reservation.end)}</td>
-                  <td>{reservation.plate}</td>
-                  <td>{formatPrice(reservation)}</td>
-                  <td>
-                    <StateBadge state={reservation.state} />
-                  </td>
-                  <td>
-                    <AdminCancel reservation={reservation} />
-                  </td>
+          <div className="site-card admin-table-card">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th scope="col">Lot</th>
+                  <th scope="col">Space</th>
+                  <th scope="col">From</th>
+                  <th scope="col">To</th>
+                  <th scope="col">Plate</th>
+                  <th scope="col" className="admin-num">
+                    Price
+                  </th>
+                  <th scope="col">State</th>
+                  <th scope="col">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <p>Times are local time in Sarajevo.</p>
-          <Pager page={page} totalPages={Number(reservations.data.totalPages ?? 1)} onChange={setPage} />
+              </thead>
+              <tbody>
+                {reservations.data.items.map((reservation) => (
+                  <tr key={reservation.id}>
+                    <td className="admin-strong">{reservation.lotName}</td>
+                    <td>{reservation.spaceLabel}</td>
+                    <td className="admin-nowrap">{formatLotDateTime(reservation.start)}</td>
+                    <td className="admin-nowrap">{formatLotDateTime(reservation.end)}</td>
+                    <td className="admin-nowrap">{reservation.plate}</td>
+                    <td className="admin-num admin-nowrap">{formatPrice(reservation)}</td>
+                    <td>
+                      <StateBadge state={reservation.state} />
+                    </td>
+                    <td>
+                      <AdminCancel reservation={reservation} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="admin-footnote">Times are local time in Sarajevo.</p>
+          <div className="admin-pager">
+            <Pager page={page} totalPages={Number(reservations.data.totalPages ?? 1)} onChange={setPage} />
+          </div>
         </>
       )}
     </section>
