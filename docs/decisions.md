@@ -13,6 +13,7 @@ Each entry has a decision, the rationale, the evidence it is based on and a fall
 | D3 | Board and repository visibility | Public repository, private board until the project is finished | 2026-11-15 |
 | D4 | TypeScript version of the frontend | TypeScript 5.9, not 6.0 | 2026-11-24 |
 | D5 | Register reveals that an email is taken | Accepted: 409 on register, rate limited | 2026-11-24 |
+| D6 | Language of the user interface | English for now; i18n is the next step for local users | 2026-11-26 |
 
 ## D1: snake_case naming in EF Core
 
@@ -140,3 +141,22 @@ it slows down checking a long list of them.
 
 **Fallback.** When email sending is added, register returns the same response for a new and a
 taken email, and the owner of a taken email gets a notification instead of the 409.
+
+## D6: Language of the user interface
+
+**Decision.** The web UI stays in English. All texts are written directly in the components; there
+is no translation layer and no i18n library.
+
+**Rationale.** CityPark is a portfolio project, and the people who review it read English. The
+code, the API errors, the documentation and the board are in English too, so one language keeps
+them consistent. Adding an i18n library now would mean extracting every text into keys before
+there is a second language to translate them into.
+
+**Evidence.** On 2026-11-26 every page, form message and API problem detail shown in the UI is in
+English. The lots are in Sarajevo, so lot names such as Baščaršija stay in their local spelling;
+they are data from the API, not UI texts.
+
+**Fallback.** For local users the next step is i18n: move the UI texts into translation files with
+an i18n library (for example `react-i18next`), add Bosnian, Croatian and Serbian next to English,
+and map the API error codes to translated messages in the frontend instead of showing the English
+detail text.
