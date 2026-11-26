@@ -75,7 +75,6 @@ main:has(> .hero) {
 .hero-cta {
   display: inline-flex;
   align-items: center;
-  gap: 14px;
   height: 56px;
   padding: 0 28px;
   border-radius: 6px;
