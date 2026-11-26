@@ -9,6 +9,7 @@ import {
   useLot,
   useQuote,
 } from './api'
+import { useDocumentTitle } from '../../components/useDocumentTitle'
 import { addMinutes, type Interval, lotToday, quarterHours, readInterval, STEP_MINUTES, toLotInstant } from './interval'
 import { IntervalPicker } from './IntervalPicker'
 import { BACK_TO_LOTS, LotHeader } from './LotHeader'
@@ -26,6 +27,7 @@ import { withReturnTo } from '../auth/returnTo'
 export function LotAvailabilityPage() {
   const { id = '' } = useParams()
   const lot = useLot(id)
+  useDocumentTitle(lot.data?.name ?? 'Parking lot')
 
   return (
     <section className="lot-page">

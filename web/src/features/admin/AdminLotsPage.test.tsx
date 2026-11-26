@@ -63,6 +63,14 @@ describe('admin access', () => {
 })
 
 describe('admin lots', () => {
+  it('sets the tab title', async () => {
+    stubApi(routes(ADMIN))
+    renderApp()
+
+    expect(await screen.findByRole('heading', { name: 'Manage parking lots' })).toBeDefined()
+    expect(document.title).toBe('Manage parking lots · CityPark')
+  })
+
   it('creates a lot and reloads the list', async () => {
     const created = { ...CENTAR, id: '019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7d02', name: 'Marijin Dvor', totalSpaces: 0 }
     const fetchMock = stubApi(routes(ADMIN, { [CREATE]: () => Response.json(created, { status: 201 }) }))

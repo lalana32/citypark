@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Pager } from '../../components/Pager'
+import { useDocumentTitle } from '../../components/useDocumentTitle'
 import { formatRate, formatWindow, type Lot, useLots } from '../lots/api'
 import { AddSpaceForm } from './AddSpaceForm'
 import { NEW_LOT, toLotValues, useSaveLot } from './api'
@@ -13,6 +14,7 @@ export function AdminLotsPage() {
   const [editing, setEditing] = useState<Editing>(null)
   const [saved, setSaved] = useState<string | null>(null)
   const lots = useLots(page)
+  useDocumentTitle('Manage parking lots')
 
   const open = (next: Editing) => {
     setSaved(null)

@@ -43,6 +43,12 @@ describe('home page', () => {
     expect(screen.getByRole('link', { name: 'Find parking' }).querySelector('svg')).toBeNull()
   })
 
+  it('sets the tab title', () => {
+    renderHome()
+
+    expect(document.title).toBe('Parking reservations · CityPark')
+  })
+
   it('hides the decorative map from assistive technology', () => {
     const { container } = renderHome()
 

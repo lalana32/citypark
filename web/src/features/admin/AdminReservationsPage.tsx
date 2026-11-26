@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Pager } from '../../components/Pager'
+import { useDocumentTitle } from '../../components/useDocumentTitle'
 import { formatLotDateTime } from '../lots/interval'
 import { formatPrice } from '../reservations/api'
 import { CancelAction, StateBadge } from '../reservations/ReservationParts'
@@ -8,6 +9,7 @@ import { adminCanCancel, type AdminReservation, useAdminCancelReservation, useAd
 export function AdminReservationsPage() {
   const [page, setPage] = useState(1)
   const reservations = useAdminReservations(page)
+  useDocumentTitle('All reservations')
 
   return (
     <section>

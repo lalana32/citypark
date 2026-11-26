@@ -1,4 +1,5 @@
 import { Link } from 'react-router'
+import { useDocumentTitle } from '../../components/useDocumentTitle'
 import { AnimatedCityMap } from './cityMap/AnimatedCityMap'
 import { FaqSection } from './FaqSection'
 import { HowItWorksSection } from './HowItWorksSection'
@@ -8,6 +9,8 @@ import './home.css'
 
 /** Public landing page: the hero with the animated city map, then the browsing sections. */
 export function HomePage() {
+  useDocumentTitle('Parking reservations')
+
   return (
     <>
       <Hero />

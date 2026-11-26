@@ -89,6 +89,15 @@ async function check() {
 }
 
 describe('LotAvailabilityPage', () => {
+  it('names the tab after the lot once it loads', async () => {
+    stubApi(routes())
+    renderPage()
+
+    expect(document.title).toBe('Parking lot · CityPark')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Centar' })).toBeDefined()
+    expect(document.title).toBe('Centar · CityPark')
+  })
+
   it('draws the plan for the chosen interval in lot time, with only the free space selectable', async () => {
     const fetchMock = stubApi(routes(() => availabilityOf([TWO_SPACES[0]], OCCUPIED)))
     renderPage()

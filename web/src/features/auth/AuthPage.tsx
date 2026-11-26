@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useDocumentTitle } from '../../components/useDocumentTitle'
 import './auth.css'
 
 type Props = {
@@ -12,6 +13,8 @@ type Props = {
 
 /** The shared frame of the login and registration pages. */
 export function AuthPage({ title, intro, notice, children, footer }: Props) {
+  useDocumentTitle(title)
+
   return (
     <section className="auth-page">
       <div className="site-wrap">
