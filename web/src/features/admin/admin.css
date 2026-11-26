@@ -1,0 +1,55 @@
+/* Admin pages. Colours come from .site (site.css). */
+.admin-page {
+  padding: 48px 0 96px;
+}
+
+.admin-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 1.5px solid var(--line);
+}
+
+.admin-nav a {
+  padding: 10px 16px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.admin-nav a:hover {
+  color: var(--ink);
+  background: #f1f3f7;
+}
+
+.admin-nav a[aria-current='page'] {
+  background: #eef3ff;
+  color: var(--accent);
+}
+
+.admin-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.admin-header .site-h2 {
+  font-size: 32px;
+}
+
+@media (max-width: 700px) {
+  .admin-page {
+    padding: 32px 0 64px;
+  }
+
+  .admin-header .site-h2 {
+    font-size: 26px;
+  }
+}

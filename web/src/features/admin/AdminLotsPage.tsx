@@ -23,7 +23,14 @@ export function AdminLotsPage() {
 
   return (
     <section>
-      <h2>Manage parking lots</h2>
+      <header className="admin-header">
+        <h2 className="site-h2 site-display">Manage parking lots</h2>
+        {!editing && (
+          <button type="button" className="site-btn site-btn-primary" onClick={() => open({ kind: 'lot' })}>
+            New lot
+          </button>
+        )}
+      </header>
       {saved && <p role="status">{saved}</p>}
       {editing?.kind === 'lot' && (
         <LotEditor
@@ -43,11 +50,6 @@ export function AdminLotsPage() {
           onAdded={(space) => setSaved(`Space ${space.label} added to ${editing.lot.name}.`)}
           onClose={() => setEditing(null)}
         />
-      )}
-      {!editing && (
-        <button type="button" onClick={() => open({ kind: 'lot' })}>
-          New lot
-        </button>
       )}
 
       {lots.isPending && <p role="status">Loading lots…</p>}
