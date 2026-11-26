@@ -35,13 +35,15 @@ gets **401**, and one without the required role gets **403**, never a redirect t
 
 | Field | Content |
 | --- | --- |
-| `type` | One of the URIs above. Clients branch on `status` and `type`, never on the text |
+| `type` | One of the URIs above. Clients branch on `status`, `type` and `code`, never on the text |
 | `title` | Short, fixed summary of the status, for example "A business rule was violated." |
 | `status` | The HTTP status code, repeated in the body |
 | `detail` | The exception message, written for the user. Absent on 500 outside Development |
 | `instance` | The request path |
 | `traceId` | W3C trace id of the request; the same id is in the server log |
 | `errors` | Only on 400 and 422: field name to list of messages |
+| `code` | Only on a 409 from creating a reservation: `space_taken` (R6), `plate_overlap` (R7) or `reservation_limit` (R10) ([api.md](api.md#conflicts-409)) |
+| `reservationIds` | Only on the R12 409 from deactivating a space: the reservations that block it |
 
 ### Validation errors
 

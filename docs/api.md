@@ -52,14 +52,18 @@ Common to all `/api/v1` routes:
 
 A 409 means the request is valid but the current data does not allow it; sending it again later may succeed. Every 409 except the one on register comes from a `DomainConflictException`, which `ApiExceptionHandler` maps in one place.
 
-| Case | Rule | Raised by | Decided by |
-| --- | --- | --- | --- |
-| The given space already has an overlapping Active reservation | R6 | `ReservationConflictException` | Exclusion constraint `ex_reservations_space_no_overlap`, SQLSTATE `23P01` ([ADR-002](adr/0002-overlap-prevention-with-exclusion-constraint.md)) |
-| No space of the lot is free, or all candidates were lost to parallel requests | R6 | `NoFreeSpaceException` | The same constraint, once per candidate ([Automatic space assignment](#automatic-space-assignment)) |
-| The reservation is already cancelled, also by a simultaneous request | R9 | `DomainConflictException` | Domain status check, or the `xmin` concurrency token ([ADR-005](adr/0005-optimistic-concurrency-on-xmin-for-cancellation.md)) |
-| The lot already has a space with this label | I1 | `DomainConflictException` | Domain check in `ParkingLot`, and the unique index `ix_parking_spaces_lot_id_label` (`23505`) for parallel requests |
-| The space has Active reservations that have not ended | R12 | `SpaceHasActiveReservationsException`, lists `reservationIds` | Application check |
-| The email is already registered | – | The register handler returns the 409 itself (`TypedResults.Problem`) | Identity ([D5](decisions.md#d5-register-reveals-that-an-email-is-taken)) |
+| Case | Rule | Raised by | Decided by | `code` |
+| --- | --- | --- | --- | --- |
+| The given space already has an overlapping Active reservation | R6 | `ReservationConflictException` | Exclusion constraint `ex_reservations_space_no_overlap`, SQLSTATE `23P01` ([ADR-002](adr/0002-overlap-prevention-with-exclusion-constraint.md)) | `space_taken` |
+| No space of the lot is free, or all candidates were lost to parallel requests | R6 | `NoFreeSpaceException` | The same constraint, once per candidate ([Automatic space assignment](#automatic-space-assignment)) | `space_taken` |
+| The plate already has an overlapping Active reservation, in any lot | R7 | `PlateOverlapException` | Exclusion constraint `ex_reservations_plate_no_overlap`, SQLSTATE `23P01`; a request by lot stops here instead of trying the next space | `plate_overlap` |
+| The user already holds 10 Active reservations that have not started | R10 | `ReservationLimitException` | Application count before the insert, a soft rule: parallel requests of one user can all pass the count | `reservation_limit` |
+| The reservation is already cancelled, also by a simultaneous request | R9 | `DomainConflictException` | Domain status check, or the `xmin` concurrency token ([ADR-005](adr/0005-optimistic-concurrency-on-xmin-for-cancellation.md)) | – |
+| The lot already has a space with this label | I1 | `DomainConflictException` | Domain check in `ParkingLot`, and the unique index `ix_parking_spaces_lot_id_label` (`23505`) for parallel requests | – |
+| The space has Active reservations that have not ended | R12 | `SpaceHasActiveReservationsException`, lists `reservationIds` | Application check | – |
+| The email is already registered | – | The register handler returns the 409 itself (`TypedResults.Problem`) | Identity ([D5](decisions.md#d5-register-reveals-that-an-email-is-taken)) | – |
+
+Only the 409s from creating a reservation carry `code`; the others are told apart by the endpoint that returned them.
 
 The database errors are recognised by SQLSTATE **and** constraint name in `PostgresDatabaseErrors`, never by message text. Any other database error is not turned into a 409; it stays a 500.
 
@@ -188,7 +192,7 @@ Every endpoint requires sign-in: without a valid session cookie it returns **401
 
 | Endpoint | Success | Errors |
 |---|---|---|
-| `POST /api/v1/reservations` | **201** with a `Location` header (`/api/v1/reservations/{id}`) and the reservation, including the stored `price` and the `spaceLabel` it got | 400 for a missing or malformed field, or for both or neither of `spaceId` and `lotId`; 404 for an unknown space or lot; **409** when the space already has an overlapping Active reservation (R6), or when the lot has no free space; 422 for a broken booking rule (R1–R5, R11, R14) |
+| `POST /api/v1/reservations` | **201** with a `Location` header (`/api/v1/reservations/{id}`) and the reservation, including the stored `price` and the `spaceLabel` it got | 400 for a missing or malformed field, or for both or neither of `spaceId` and `lotId`; 404 for an unknown space or lot; **409** with `code` `space_taken` when the space already has an overlapping Active reservation or the lot has no free space (R6), `plate_overlap` when the plate already has an overlapping Active reservation in any lot (R7), or `reservation_limit` when the user already holds 10 upcoming reservations (R10); 422 for a broken booking rule (R1–R5, R11, R14) |
 | `GET /api/v1/reservations?page=&pageSize=` | 200 with a page of own reservations (default `page=1`, `pageSize=20`) | 400 for page or page size below 1 |
 | `GET /api/v1/reservations/{id}` | 200 with the reservation | **404** for an unknown id **and for another user's reservation** |
 | `POST /api/v1/reservations/{id}/cancel` | 204 | **404** as above (the reservation stays Active); **409** when it is already cancelled; **422** once it has started (R9) |
@@ -240,7 +244,7 @@ Instead of `spaceId`, the body may name a lot with `lotId`; the system then pick
 - **`spaceId` works as before.** That space or a 409; the request never falls back to another space.
 - **Which space:** the first active space of the lot, ordered by label, that no Active reservation overlaps. No fairness or optimization. The response shows it in `spaceLabel`.
 - **Rules first:** a broken booking rule is 422 even when the lot is full.
-- **Parallel requests:** the free spaces are only candidates; the exclusion constraint decides ([ADR-002](adr/0002-overlap-prevention-with-exclusion-constraint.md#create-reservation-by-lot)). A request that loses a space to a parallel request (`23P01`) tries the next candidate, up to `CreateReservationService.MaxAttempts` (10) inserts. When no candidate is left the answer is **409** and nothing is written.
+- **Parallel requests:** the free spaces are only candidates; the exclusion constraint decides ([ADR-002](adr/0002-overlap-prevention-with-exclusion-constraint.md#create-reservation-by-lot)). A request that loses a space to a parallel request (`23P01`) tries the next candidate, up to `CreateReservationService.MaxAttempts` (10) inserts. When no candidate is left the answer is **409** and nothing is written. A plate conflict (R7) stops the loop at once with `plate_overlap`, because every other space would fail for the same car.
 
 **Known limit:** under heavy load on a lot with more than 10 free spaces, a request can lose all 10 candidates and get 409 while a free space still exists. The client can simply send the request again.
 
