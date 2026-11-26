@@ -144,6 +144,29 @@ public sealed class ParallelReservationTests : IClassFixture<PostgresFixture>, I
         }
     }
 
+    // R7: twenty free spaces in twenty lots, one car. No space is contested, only the plate.
+    [Fact]
+    public async Task ScenarioF_SamePlateAndInterval_InTwentyLots_ExactlyOneSucceeds()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        for (var round = 1; round <= Rounds; round++)
+        {
+            var plate = TestPlates.Next();
+            var spaces = new List<Guid>();
+            for (var n = 0; n < 20; n++)
+            {
+                spaces.Add((await AddLotAsync(1, ct))[0]);
+            }
+
+            var results = await ParallelRunner.RunAsync(20, i => CreateAsync(spaces[i], Local(10), Local(11), ct, plate));
+
+            var successes = CountSuccesses<PlateOverlapException>(round, results);
+            Assert.True(successes == 1, $"Round {round}: {successes} of 20 succeeded, expected 1.");
+            Assert.True(await CountActiveAsync(plate, ct) == 1, $"Round {round}: expected 1 active row for {plate}.");
+        }
+    }
+
     public ValueTask DisposeAsync() => _services.DisposeAsync();
 
     private static int CountSuccesses(int round, IReadOnlyList<Exception?> results) =>
@@ -165,17 +188,25 @@ public sealed class ParallelReservationTests : IClassFixture<PostgresFixture>, I
         await service.CreateInLotAsync(_fixture.UserId, lotId, start, end, TestPlates.Next(), ct);
     }
 
-    private async Task CreateAsync(Guid spaceId, DateTimeOffset start, DateTimeOffset end, CancellationToken ct)
+    private async Task CreateAsync(
+        Guid spaceId, DateTimeOffset start, DateTimeOffset end, CancellationToken ct, string? plate = null)
     {
         await using var scope = _services.CreateAsyncScope();
         var service = scope.ServiceProvider.GetRequiredService<CreateReservationService>();
-        await service.CreateAsync(_fixture.UserId, spaceId, start, end, TestPlates.Next(), ct);
+        await service.CreateAsync(_fixture.UserId, spaceId, start, end, plate ?? TestPlates.Next(), ct);
     }
 
     private async Task<int> CountActiveAsync(Guid spaceId, CancellationToken ct)
     {
         await using var db = _fixture.CreateDbContext();
         return await db.Reservations.CountAsync(r => r.SpaceId == spaceId && r.Status == ReservationStatus.Active, ct);
+    }
+
+    private async Task<int> CountActiveAsync(string plate, CancellationToken ct)
+    {
+        var licensePlate = new LicensePlate(plate);
+        await using var db = _fixture.CreateDbContext();
+        return await db.Reservations.CountAsync(r => r.Plate == licensePlate && r.Status == ReservationStatus.Active, ct);
     }
 
     private async Task<List<TimeInterval>> ActiveIntervalsAsync(Guid spaceId, CancellationToken ct)

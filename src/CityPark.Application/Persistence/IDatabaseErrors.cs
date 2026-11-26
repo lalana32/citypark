@@ -8,6 +8,9 @@ public interface IDatabaseErrors
     /// <summary>True only for the space no-overlap constraint (23P01). Any other error must be rethrown.</summary>
     bool IsSpaceOverlapViolation(DbUpdateException exception);
 
+    /// <summary>True only for the plate no-overlap constraint (23P01, R7). Any other error must be rethrown.</summary>
+    bool IsPlateOverlapViolation(DbUpdateException exception);
+
     /// <summary>True only for the unique space label within a lot (23505, I1). Any other error must be rethrown.</summary>
     bool IsSpaceLabelViolation(DbUpdateException exception);
 }

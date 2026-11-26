@@ -53,6 +53,10 @@ public sealed class CreateReservationService(
         {
             throw new ReservationConflictException(spaceId, interval, ex);
         }
+        catch (DbUpdateException ex) when (databaseErrors.IsPlateOverlapViolation(ex))
+        {
+            throw new PlateOverlapException(licensePlate, interval, ex);
+        }
 
         return reservation;
     }
@@ -106,6 +110,11 @@ public sealed class CreateReservationService(
             {
                 // Lost the race for this space. Without detaching, the next save would retry this insert too.
                 db.Reservations.Entry(reservation).State = EntityState.Detached;
+            }
+            catch (DbUpdateException ex) when (databaseErrors.IsPlateOverlapViolation(ex))
+            {
+                // The car is booked elsewhere: every other space would fail the same way.
+                throw new PlateOverlapException(licensePlate, interval, ex);
             }
         }
 
