@@ -276,3 +276,23 @@ end, plate)` implements the space assignment from [Decision](#decision):
 4. With no candidate left it throws `NoFreeSpaceException`, a `DomainConflictException` (409).
 
 `CreateAsync` with an explicit space is unchanged and never falls back to another space.
+
+## Update (CP-055)
+
+Added in CP-055 (2026-11-26). The text above is kept as written; this section corrects what
+CP-054 changed.
+
+- **The plate constraint exists.** `ex_reservations_plate_no_overlap` (R7, I5) was created in
+  CP-054 by the migration `AddReservationPlateOverlapConstraint`, with the SQL shown under
+  [Decision](#decision). Where the sections above describe it as still to come (under
+  [Validation](#validation) and [Create reservation](#create-reservation)), read them as history. `PostgresDatabaseErrors.IsPlateOverlapViolation`
+  matches it by SQLSTATE and constraint name, and both create paths turn it into
+  `PlateOverlapException` (409, `code` `plate_overlap`). The lot path stops on it instead of trying
+  the next candidate, because every other space would fail for the same car.
+- **The R10 race.** R10 is a count in `CreateReservationService` before the insert, a soft rule:
+  parallel requests of one user can all pass the count, so the limit can be exceeded by more than
+  one. This replaces "can be exceeded by one" under [Consequences](#consequences).
+- **Both constraints violated.** When one insert overlaps both a reservation of the same space and
+  a reservation of the same plate, PostgreSQL reports one violation and stops. Which constraint it
+  reports is not defined, so the client may get either `space_taken` or `plate_overlap`. Both are
+  correct, and no test asserts which one comes back.
