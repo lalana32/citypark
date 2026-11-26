@@ -60,7 +60,12 @@ DAY="$(tomorrow)"
 START="${DAY}T09:00:00Z"
 END="${DAY}T10:00:00Z"
 
-echo "Smoke test against $BASE_URL"
+# A new plate per run: R7 is per vehicle, so a fixed plate gets 409 plate_overlap on the second run.
+PLATE_LETTERS="AEJKMOT"
+PLATE="${PLATE_LETTERS:RANDOM%7:1}$(printf '%02d' $((RANDOM % 100)))${PLATE_LETTERS:RANDOM%7:1}$(printf '%03d' $((RANDOM % 1000)))"
+[[ "$PLATE" =~ ^[AEJKMOT][0-9]{2}[AEJKMOT][0-9]{3}$ ]] || fail "generated plate $PLATE does not match the LicensePlate format"
+
+echo "Smoke test against $BASE_URL (plate $PLATE)"
 
 expect 200 "health ready" "$BASE_URL/health/ready"
 
@@ -75,9 +80,9 @@ grep -q 'citypark.auth' "$JAR" || fail "login set no session cookie"
 expect 200 "me (cookie sent back)" "$BASE_URL/api/v1/auth/me"
 
 expect_post 201 "create reservation" "$BASE_URL/api/v1/reservations" \
-  "{\"lotId\":\"$LOT_ID\",\"start\":\"$START\",\"end\":\"$END\",\"plate\":\"A12K345\"}"
+  "{\"lotId\":\"$LOT_ID\",\"start\":\"$START\",\"end\":\"$END\",\"plate\":\"$PLATE\"}"
 
 expect 200 "list own reservations" "$BASE_URL/api/v1/reservations"
-grep -q 'A12K345' "$BODY" || fail "the new reservation is not in the list"
+grep -q "$PLATE" "$BODY" || fail "the new reservation is not in the list"
 
 echo "Smoke test passed."
