@@ -10,9 +10,9 @@ internal sealed class ReservationConfiguration : IEntityTypeConfiguration<Reserv
 {
     private const string VersionProperty = "Version";
 
-    // The no-overlap rule is a PostgreSQL EXCLUDE constraint (ex_reservations_space_no_overlap) created
-    // with raw SQL in the AddReservationOverlapConstraint migration; EF Core cannot model exclusion
-    // constraints (ADR-002).
+    // The no-overlap rules are PostgreSQL EXCLUDE constraints created with raw SQL, because EF Core
+    // cannot model them (ADR-002): ex_reservations_space_no_overlap (R6, AddReservationOverlapConstraint)
+    // and ex_reservations_plate_no_overlap (R7, AddReservationPlateOverlapConstraint).
     public void Configure(EntityTypeBuilder<Reservation> builder)
     {
         // Assigned by Reservation.Create (Guid v7), never by EF Core or the database.

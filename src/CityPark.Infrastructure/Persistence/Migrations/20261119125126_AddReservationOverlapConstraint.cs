@@ -7,7 +7,7 @@ namespace CityPark.Infrastructure.Persistence.Migrations
     /// <summary>
     /// I4 (ADR-002): Active reservations of one space never overlap, using half-open [start, end).
     /// EF Core cannot model exclusion constraints, so this migration is raw SQL and the model
-    /// snapshot does not change. The plate constraint (I5) follows in a later card.
+    /// snapshot does not change. The plate constraint (I5) is AddReservationPlateOverlapConstraint.
     /// </summary>
     public partial class AddReservationOverlapConstraint : Migration
     {
