@@ -108,6 +108,8 @@ export function cancelErrorMessage(status: number, problem: Problem | undefined)
 }
 
 export const SPACE_TAKEN = 'Someone has just booked this space. The free spaces are refreshed, so please pick another one.'
+export const PLATE_OVERLAP = 'This vehicle already has a reservation at this time.'
+export const RESERVATION_LIMIT = 'You already have 10 upcoming reservations. Cancel one to book another.'
 export const UNEXPECTED_ERROR = 'Something went wrong. Please try again.'
 
 /** 409: another booking won the race for the space. */
@@ -151,7 +153,7 @@ export function useCreateReservation(lotId: string) {
         case 401:
           throw new SignedOutError()
         case 409:
-          throw new SpaceTakenError()
+          throw toConflictError(error as { code?: unknown } | undefined)
         case 400:
         case 422:
           throw new BookingRuleError(toBookingErrors(error as Problem | undefined))
@@ -170,6 +172,19 @@ export function useCreateReservation(lotId: string) {
       }
     },
   })
+}
+
+// Only a taken space is fixed by picking another space; the other two stay in the booking panel.
+export function toConflictError(problem: { code?: unknown } | undefined): Error {
+  switch (problem?.code) {
+    case 'plate_overlap':
+      return new BookingRuleError({ fields: { plate: PLATE_OVERLAP } })
+    case 'reservation_limit':
+      return new BookingRuleError({ fields: {}, form: RESERVATION_LIMIT })
+    default:
+      // space_taken, and any 409 without a code, as before codes existed.
+      return new SpaceTakenError()
+  }
 }
 
 export function toBookingErrors(problem: Problem | undefined): BookingErrors {
