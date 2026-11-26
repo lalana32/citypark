@@ -115,4 +115,19 @@ public sealed class PersistenceSmokeTests(PostgresFixture fixture) : IClassFixtu
         Assert.Equal(PostgresErrorCodes.UniqueViolation, pg.SqlState);
         Assert.Equal("ix_parking_spaces_lot_id_label", pg.ConstraintName);
     }
+
+    // I1 for direct SQL too: the domain cannot create a space without a lot, the schema must not either.
+    [Fact]
+    public async Task SpaceWithoutLot_IsRejectedByTheDatabase()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var db = fixture.CreateDbContext();
+
+        var ex = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlAsync(
+            $"INSERT INTO parking_spaces (id, label, is_active, lot_id) VALUES ({Guid.CreateVersion7()}, 'X-1', true, NULL)",
+            ct));
+
+        Assert.Equal(PostgresErrorCodes.NotNullViolation, ex.SqlState);
+        Assert.Equal("lot_id", ex.ColumnName);
+    }
 }

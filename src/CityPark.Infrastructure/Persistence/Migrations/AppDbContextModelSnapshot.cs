@@ -18,7 +18,7 @@ namespace CityPark.Infrastructure.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.4")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "btree_gist");
@@ -89,7 +89,7 @@ namespace CityPark.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("label");
 
-                    b.Property<Guid?>("LotId")
+                    b.Property<Guid>("LotId")
                         .HasColumnType("uuid")
                         .HasColumnName("lot_id");
 
@@ -427,6 +427,7 @@ namespace CityPark.Infrastructure.Persistence.Migrations
                         .WithMany("Spaces")
                         .HasForeignKey("LotId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
                         .HasConstraintName("fk_parking_spaces_parking_lots_lot_id");
                 });
 

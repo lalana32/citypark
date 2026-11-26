@@ -29,9 +29,11 @@ internal sealed class ParkingLotConfiguration : IEntityTypeConfiguration<Parking
 
         // The domain exposes Spaces read-only; EF Core loads and saves through the _spaces field.
         // LotId is a shadow property: the database needs the column, the domain does not.
+        // Required (I1): by convention EF Core makes a shadow foreign key nullable.
         builder.HasMany(l => l.Spaces)
             .WithOne()
             .HasForeignKey(ParkingSpaceConfiguration.LotId)
+            .IsRequired()
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.Navigation(l => l.Spaces).UsePropertyAccessMode(PropertyAccessMode.Field);
