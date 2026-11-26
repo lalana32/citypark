@@ -96,6 +96,16 @@ public class ModelMappingTests
         Assert.Equal("ix_parking_spaces_lot_id_label", index.GetDatabaseName());
     }
 
+    // I1: a space belongs to exactly one lot. A nullable lot_id would also slip past the unique index.
+    [Fact]
+    public void ParkingSpace_LotId_IsRequired()
+    {
+        var foreignKey = Assert.Single(Entity<ParkingSpace>().GetForeignKeys());
+
+        Assert.True(foreignKey.IsRequired);
+        Assert.False(Entity<ParkingSpace>().FindProperty("LotId")!.IsNullable);
+    }
+
     [Fact]
     public void ParkingSpace_IsActive_IsMapped()
     {
