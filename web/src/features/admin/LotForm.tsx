@@ -37,8 +37,12 @@ export function LotForm({ defaultValues, submitLabel, onSubmit, onCancel }: Prop
   const required = (label: string) => ({ required: `${label} is required.` })
 
   return (
-    <form onSubmit={submit} noValidate>
-      {errors.root?.server && <p role="alert">{errors.root.server.message}</p>}
+    <form onSubmit={submit} noValidate className="admin-form">
+      {errors.root?.server && (
+        <p role="alert" className="admin-alert">
+          {errors.root.server.message}
+        </p>
+      )}
       <Field name="name" label="Name" errors={errors} input={register('name', required('Name'))} />
       <Field name="address" label="Address" errors={errors} input={register('address', required('Address'))} />
       <Field
@@ -58,12 +62,14 @@ export function LotForm({ defaultValues, submitLabel, onSubmit, onCancel }: Prop
         errors={errors}
         input={register('closesAt', required('Closes at'))}
       />
-      <button type="submit" disabled={isSubmitting}>
-        {submitLabel}
-      </button>
-      <button type="button" onClick={onCancel}>
-        Cancel
-      </button>
+      <div className="admin-form-actions">
+        <button type="submit" className="site-btn site-btn-primary" disabled={isSubmitting}>
+          {submitLabel}
+        </button>
+        <button type="button" className="site-btn site-btn-secondary" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
     </form>
   )
 }
@@ -81,17 +87,22 @@ function Field({ name, label, type = 'text', step, errors, input }: FieldProps) 
   const error = errors[name]
   const id = `lot-${name}`
   return (
-    <>
+    <div className="admin-field">
       <label htmlFor={id}>{label}</label>
       <input
         id={id}
         type={type}
         step={step}
+        className="admin-input"
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
         {...input}
       />
-      {error && <p id={`${id}-error`}>{error.message}</p>}
-    </>
+      {error && (
+        <p id={`${id}-error`} className="admin-field-error">
+          {error.message}
+        </p>
+      )}
+    </div>
   )
 }
