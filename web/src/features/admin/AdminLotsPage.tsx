@@ -131,14 +131,14 @@ function LotEditor({ lot, onDone, onCancel }: EditorProps) {
   const save = useSaveLot(lot?.id)
 
   return (
-    <>
-      <h3>{lot ? `Edit ${lot.name}` : 'New lot'}</h3>
+    <div className="site-card admin-panel">
+      <h3 className="site-display admin-panel-title">{lot ? `Edit ${lot.name}` : 'New lot'}</h3>
       <LotForm
         defaultValues={lot ? toLotValues(lot) : NEW_LOT}
         submitLabel={lot ? 'Save changes' : 'Create lot'}
         onSubmit={async (values) => onDone(await save.mutateAsync(values))}
         onCancel={onCancel}
       />
-    </>
+    </div>
   )
 }
