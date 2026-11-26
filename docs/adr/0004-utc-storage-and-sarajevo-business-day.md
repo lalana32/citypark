@@ -78,3 +78,19 @@ curve for a project with a single time zone. It is the first candidate if time h
 - On DST change days a local day is 23 or 25 hours long, and some local times are rejected or
   resolved by convention. With typical opening hours (for example 07:00–22:00) this does not
   affect reservations, but a lot open at night would see it.
+
+## Update (CP-055)
+
+Added in CP-055 (2026-11-26). The text above is kept as written; this section records how the
+API was built.
+
+- **The API takes ISO 8601 instants with an offset**, for example `2026-12-01T10:00:00+01:00`, not
+  a local date and local times as [Decision](#decision) describes. The instant is converted to UTC
+  as soon as it is read.
+- **Local times are derived only to check the rules.** The domain converts the UTC instant to
+  Europe/Sarajevo to check the grid, the single day, the opening hours, the horizon and the start
+  tolerance (R1, R3–R5). Storage and the overlap constraints stay in UTC.
+- **The DST rules for local input do not apply to the API.** An instant with an offset always
+  names exactly one moment, so there is no non-existent or ambiguous local time to reject or
+  resolve. The DST notes above apply only where a client builds such an instant from a local
+  wall-clock time.
