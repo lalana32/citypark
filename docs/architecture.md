@@ -74,14 +74,17 @@ sequenceDiagram
     P->>P: ValidationFilter<CreateReservationRequest> (400)
     P->>E: CreateAsync(request, user)
     E->>S: CreateInLotAsync(userId, lotId, start, end, plate)
-    S->>D: TimeInterval, LicensePlate, EnsureBookable (422)
-    S->>DB: SELECT lot (404), SELECT free candidate spaces
+    S->>D: TimeInterval, LicensePlate (422)
+    S->>DB: SELECT lot (404)
+    S->>D: EnsureBookable (422)
+    S->>DB: COUNT the user's upcoming Active reservations (R10, ReservationLimitException 409)
+    S->>DB: SELECT free candidate spaces
     loop each candidate, at most 10
         S->>D: Reservation.Create (price snapshot, R8)
         S->>DB: INSERT
-        DB-->>S: ok, or 23P01 → next candidate
+        DB-->>S: ok, 23P01 on the space → next candidate, or 23P01 on the plate → stop
     end
-    S-->>E: Reservation, or NoFreeSpaceException (409)
+    S-->>E: Reservation, PlateOverlapException (409, R7), or NoFreeSpaceException (409)
     E->>DB: OwnReservationQueryService.GetAsync (read back)
     E-->>B: 201 Created, Location header
 ```
@@ -94,9 +97,11 @@ sequenceDiagram
    `lotId`. Shape errors are 400 and never reach the use case.
 3. **Endpoint.** Takes the user id from the cookie, never from the body, and calls the use case.
    It holds no business logic.
-4. **Use case.** Builds the value objects and checks the booking rules in the domain first, so a
-   broken rule is 422 even when the lot is full. Then it loads data and inserts.
-5. **Database.** The exclusion constraint decides which parallel insert wins
+4. **Use case.** Builds the value objects, loads the lot and checks the booking rules in the
+   domain before it looks for a space, so a broken rule is 422 even when the lot is full. Then it
+   checks the R10 limit with a count and inserts. A plate conflict ends the loop at once, because
+   every other space would fail for the same car.
+5. **Database.** The exclusion constraints decide which parallel insert wins
    ([README](../README.md#how-double-booking-is-prevented),
    [ADR-002](adr/0002-overlap-prevention-with-exclusion-constraint.md)).
 6. **Errors.** Nothing in the endpoint or the use case catches an exception to build a response.

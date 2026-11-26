@@ -15,8 +15,10 @@ parallel load against PostgreSQL 17 (Testcontainers). Added in CP-017.
 2. Each call opens its own DI scope, so it gets its own `CreateReservationService`, `DbContext`
    and database connection, like separate HTTP requests in the API.
 3. The runner returns one outcome per call: success, or the exception it threw. Any exception
-   other than `ReservationConflictException` fails the test.
+   other than the conflict the scenario expects (the **Conflict** column below) fails the test.
 4. Each scenario runs 20 rounds in one test, every round on a new lot, to expose flaky behaviour.
+5. Every round has a new user, so the rounds cannot add up to the R10 limit. Every request has a
+   new plate, except in scenario F, so only the rule under test can fail.
 
 The tests assert on outcomes and the final database state only, never on timing.
 
@@ -24,17 +26,21 @@ The tests assert on outcomes and the final database state only, never on timing.
 
 All intervals are on Tuesday 1 December 2026, Sarajevo time.
 
-| # | Requests | Space | Intervals | Expected |
-| --- | --- | --- | --- | --- |
-| A | 20 | one | all `[10:00, 11:00)` | exactly 1 succeeds, 19 conflict, 1 Active row |
-| B | 20 | one | staggered by 15 minutes: `[10:00, 11:00)`, `[10:15, 11:15)`, … | no two Active rows overlap; Active rows = successes |
-| C | 20 | five, round-robin | all `[10:00, 11:00)` | exactly 5 succeed (one per space), 15 conflict |
-| D | 10 | one | adjacent 30 minutes: `[10:00, 10:30)`, `[10:30, 11:00)`, … | all 10 succeed |
-| E | 20 | by lot (five spaces), the system picks | all `[10:00, 11:00)` | exactly 5 succeed (one per space), 15 get `NoFreeSpaceException` |
+| # | Requests | Space | Intervals | Expected | Conflict |
+| --- | --- | --- | --- | --- | --- |
+| A | 20 | one | all `[10:00, 11:00)` | exactly 1 succeeds, 19 conflict, 1 Active row | `ReservationConflictException` (R6) |
+| B | 20 | one | staggered by 15 minutes: `[10:00, 11:00)`, `[10:15, 11:15)`, … | no two Active rows overlap; Active rows = successes | `ReservationConflictException` (R6) |
+| C | 20 | five, round-robin | all `[10:00, 11:00)` | exactly 5 succeed (one per space), 15 conflict | `ReservationConflictException` (R6) |
+| D | 10 | one | adjacent 30 minutes: `[10:00, 10:30)`, `[10:30, 11:00)`, … | all 10 succeed | none expected |
+| E | 20 | by lot (five spaces), the system picks | all `[10:00, 11:00)` | exactly 5 succeed (one per space), 15 conflict | `NoFreeSpaceException` (R6) |
+| F | 20 | one free space in each of 20 lots, one plate for all | all `[10:00, 11:00)` | exactly 1 succeeds, 19 conflict, 1 Active row for the plate | `PlateOverlapException` (R7) |
 
 Scenario E (CP-030) proves the retry with the next candidate: all 20 requests see the same five
 free spaces and race for the first one. Without the retry only one request per round would
 succeed.
+
+Scenario F (CP-054) proves R7: no space is contested, so only
+`ex_reservations_plate_no_overlap` can stop the other 19 requests.
 
 In scenario B the number of successes depends on which request wins each race, so only the
 invariant is checked: no overlapping Active rows remain.
