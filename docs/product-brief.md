@@ -35,7 +35,8 @@ An administrator account is created from configuration at first start; there is 
 | Cancel own reservation (until it starts) | no | yes | yes |
 | View and cancel any reservation | no | no | yes |
 | Create and edit lots, spaces, price, opening hours | no | no | yes |
-| Deactivate a lot or space | no | no | yes |
+| Deactivate a space | no | no | yes |
+| Deactivate a lot — **Deferred (v1.0.0)**; workaround: deactivate the lot's spaces | no | no | – |
 
 ## 4. User journeys
 
@@ -56,7 +57,7 @@ If another driver takes the last free space at the same moment, the customer get
 1. Signs in with an administrator account.
 2. Creates or edits a lot (name, address, opening hours, hourly price) and its spaces.
 3. Views reservations (all lots) and cancels one when needed.
-4. To take a space or lot out of service, first cancels its future reservations (the system lists them), then deactivates it.
+4. To take a space out of service, first cancels its future reservations (the system lists them), then deactivates it. Deactivating a whole lot is **Deferred (v1.0.0)**; until then the administrator deactivates each of the lot's spaces, under the same check.
 
 ## 5. Functional scope
 
@@ -95,9 +96,9 @@ All times are evaluated in the city's time zone (**Europe/Sarajevo**) and stored
 | R7 | **No overlap per vehicle.** The same (normalized) plate cannot have two overlapping Active reservations, in any lot | `[start, end)` | plate A: 10–11, then 11–12 | plate A: 10–11 in lot 1 and 10:30–11:30 in lot 2 | **Database** (exclusion constraint) |
 | R8 | **Price.** Every started hour is billed as a full hour: `ceil(minutes / 60) × hourly price`. Calculated at creation and stored. Hourly price 2.00 BAM | whole hours | 60 min = 2.00; 61 min = 4.00; 121 min = 6.00 | a stored price that changes when the hourly price changes | Domain; stored in the reservation |
 | R9 | **Cancellation.** A customer may cancel until the reservation starts. An administrator may cancel at any time. Cancelling twice is a conflict, also when both requests arrive at the same moment. A customer sees another user's reservation as not found. A cancelled reservation frees the space and the plate | start time | cancel at 09:59 for a 10:00 start | cancel at 10:00 or later (customer); second cancel; another customer's reservation (not found) | Domain; ownership in Application; simultaneous cancels by the database ([ADR-005](adr/0005-optimistic-concurrency-on-xmin-for-cancellation.md)) |
-| R10 | **Limit per user.** At most 10 Active future reservations per user | 10 | 10th reservation accepted | 11th rejected | Application (soft rule; two simultaneous requests may exceed it by one) |
-| R11 | **Active lot and space.** Inactive lots and spaces do not receive new reservations | – | active lot | deactivated lot | Application |
-| R12 | **Deactivation.** A lot or space with future Active reservations cannot be deactivated (409); the response lists them | – | empty space is deactivated | space with a Friday reservation | Application |
+| R10 | **Limit per user.** At most 10 Active future reservations per user | 10 | 10th reservation accepted | 11th rejected | Application (soft rule; parallel requests of one user can all pass the count) |
+| R11 | **Active space.** Inactive spaces do not receive new reservations. Inactive lots: **Deferred (v1.0.0)**, a lot has no active flag; workaround: deactivate the lot's spaces | – | active space | deactivated space | Application |
+| R12 | **Deactivation.** A space with future Active reservations cannot be deactivated (409); the response lists them. Lot deactivation: **Deferred (v1.0.0)**; workaround: deactivate the lot's spaces, each under this check | – | empty space is deactivated | space with a Friday reservation | Application |
 | R13 | **Changes by the administrator.** A new price or new opening hours apply only to new reservations; existing reservations stay valid | – | an old reservation keeps its price | an old reservation is repriced | Domain |
 | R14 | **License plate.** Normalized: spaces and hyphens removed, upper case, Cyrillic A, Е, Ј, К, М, О, Т converted to Latin. Then it must match the current Bosnia and Herzegovina format | `^[AEJKMOT][0-9]{2}[AEJKMOT][0-9]{3}$` | `a12-k-345` → `A12K345` | `B12-K-345`; `A1-K-345` | Domain |
 
@@ -152,7 +153,7 @@ erDiagram
         time closes_at "local daily window end"
         numeric hourly_price "Rate: positive, two decimals"
         text currency "Rate: ISO 4217 code, BAM"
-        boolean is_active
+        boolean is_active "Deferred (v1.0.0), not in the schema"
     }
     PARKING_SPACE {
         uuid id PK
@@ -175,7 +176,7 @@ erDiagram
 
 | Relationship | Cardinality | Mandatory | On removal |
 |---|---|---|---|
-| Parking lot → parking space | one to many (at least one) | a space always has a lot | lots are deactivated, never deleted (R12) |
+| Parking lot → parking space | one to many (at least one) | a space always has a lot | lots are never deleted; lot deactivation is Deferred (v1.0.0) |
 | Parking space → reservation | one to many (may be zero) | a reservation always has a space | spaces are deactivated, never deleted (R12) |
 | User → reservation | one to many (may be zero) | a reservation always has a user | reservations stay as history |
 
@@ -195,23 +196,23 @@ Design notes
 | I4 | Active reservations of the same space never overlap (half-open) | Database exclusion constraint on `(space_id, [start_time, end_time))` where status is Active |
 | I5 | Active reservations of the same plate never overlap | Database exclusion constraint on `(plate, [start_time, end_time))` where status is Active |
 | I6 | The stored price does not change after creation | Domain: price is set once at creation |
-| I7 | An inactive space or lot receives no new reservation | Application validation |
-| I8 | A space or lot with future Active reservations cannot be deactivated | Application validation |
+| I7 | An inactive space receives no new reservation (for a lot: Deferred (v1.0.0), deactivate its spaces) | Application validation |
+| I8 | A space with future Active reservations cannot be deactivated (for a lot: Deferred (v1.0.0), deactivate its spaces) | Application validation |
 | I9 | A reservation moves only from Active to Cancelled; cancelling twice is a conflict | Domain; simultaneous updates by an `xmin` concurrency token (ADR-005) |
 | I10 | A user has at most 10 Active future reservations | Application (soft rule, see R10) |
 
-The first two database guarantees (I4, I5) need the PostgreSQL `btree_gist` extension and are proven in the exclusion-constraint spike and covered by concurrency tests (see the project backlog).
+The two database guarantees (I4, I5) need the PostgreSQL `btree_gist` extension and are covered by the concurrency tests ([testing.md](testing.md#concurrency-tests)).
 
 ## 10. Assumptions and limitations
 
 - One operator, one city, one time zone (Europe/Sarajevo). Currency is BAM.
 - Reservations are short-term: they do not cross midnight. Overnight and multi-day parking are not supported.
-- One daily opening window per lot. Weekly schedules, holidays and temporary closures are not supported; a lot can be deactivated.
+- One daily opening window per lot. Weekly schedules, holidays and temporary closures are not supported. Lot deactivation is **Deferred (v1.0.0)**; a lot is taken out of service by deactivating its spaces.
 - Space assignment takes the first free space. This can fragment capacity (a request may be rejected although a different earlier assignment would have fitted it). An optimizing assignment is out of scope.
 - No payments: the price is calculated and stored, not charged.
 - No check-in or no-show handling: a reservation holds the space for its whole interval.
 - Only current Bosnia and Herzegovina license plates are accepted; foreign and special plates are not.
-- The limit of 10 active future reservations per user is a soft rule and can be exceeded by one under simultaneous requests.
+- The limit of 10 active future reservations per user is a soft rule: parallel requests of one user can all pass the count, so the limit can be exceeded.
 - There is no notification system.
 
 ## 11. Open questions
