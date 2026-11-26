@@ -76,6 +76,52 @@ public sealed class ReservationOverlapConstraintTests(PostgresFixture fixture) :
         Assert.Equal(1, await CountReservationsAsync(second.Id, ct));
     }
 
+    // R7: one car cannot be in two places at once, whichever lot or user books it.
+    [Fact]
+    public async Task OverlappingActiveReservations_ForSamePlate_InAnotherLot_SecondInsertFailsWith23P01()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var plate = TestPlates.Next();
+        var (firstLot, first) = await AddSpaceAsync(ct);
+        var (secondLot, second) = await AddSpaceAsync(ct);
+        await AddReservationAsync(firstLot, first, At(10), At(12), ReservationStatus.Active, ct, plate);
+
+        var ex = await Assert.ThrowsAsync<DbUpdateException>(() =>
+            AddReservationAsync(secondLot, second, At(11), At(13), ReservationStatus.Active, ct, plate));
+
+        var pg = Assert.IsType<PostgresException>(ex.InnerException);
+        Assert.Equal(PostgresErrorCodes.ExclusionViolation, pg.SqlState);
+        Assert.Equal("ex_reservations_plate_no_overlap", pg.ConstraintName);
+    }
+
+    [Fact]
+    public async Task TouchingIntervals_ForSamePlate_BothInsertsSucceed()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var plate = TestPlates.Next();
+        var (firstLot, first) = await AddSpaceAsync(ct);
+        var (secondLot, second) = await AddSpaceAsync(ct);
+
+        await AddReservationAsync(firstLot, first, At(10), At(11), ReservationStatus.Active, ct, plate);
+        await AddReservationAsync(secondLot, second, At(11), At(12), ReservationStatus.Active, ct, plate);
+
+        Assert.Equal(1, await CountReservationsAsync(second.Id, ct));
+    }
+
+    [Fact]
+    public async Task OverlappingCancelledReservation_ForSamePlate_DoesNotFail()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var plate = TestPlates.Next();
+        var (firstLot, first) = await AddSpaceAsync(ct);
+        var (secondLot, second) = await AddSpaceAsync(ct);
+
+        await AddReservationAsync(firstLot, first, At(10), At(12), ReservationStatus.Cancelled, ct, plate);
+        await AddReservationAsync(secondLot, second, At(11), At(13), ReservationStatus.Active, ct, plate);
+
+        Assert.Equal(1, await CountReservationsAsync(second.Id, ct));
+    }
+
     private async Task<(ParkingLot Lot, ParkingSpace Space)> AddSpaceAsync(CancellationToken ct)
     {
         await using var db = fixture.CreateDbContext();
@@ -95,10 +141,11 @@ public sealed class ReservationOverlapConstraintTests(PostgresFixture fixture) :
         DateTimeOffset start,
         DateTimeOffset end,
         ReservationStatus status,
-        CancellationToken ct)
+        CancellationToken ct,
+        string? plate = null)
     {
         var reservation = Reservation.Create(
-            lot, space, new TimeInterval(start, end), new LicensePlate("A12K345"), fixture.UserId, Sarajevo, Clock);
+            lot, space, new TimeInterval(start, end), new LicensePlate(plate ?? TestPlates.Next()), fixture.UserId, Sarajevo, Clock);
 
         if (status == ReservationStatus.Cancelled)
         {
