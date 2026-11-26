@@ -11,6 +11,13 @@ times, even when two requests arrive at the same moment**. PostgreSQL enforces i
 exclusion constraint, and the API answers the losing request with `409 Conflict`
 ([how](#how-double-booking-is-prevented)).
 
+**Where to look first:**
+[ADR-002](docs/adr/0002-overlap-prevention-with-exclusion-constraint.md) (why the database decides),
+[`CreateReservationService`](src/CityPark.Application/Reservations/CreateReservationService.cs)
+(both create paths), and
+[`ParallelReservationTests`](tests/CityPark.Infrastructure.Tests/Reservations/ParallelReservationTests.cs)
+(the proof under real parallel load).
+
 | Part | Technology |
 | --- | --- |
 | API | .NET 10, ASP.NET Core minimal APIs, EF Core 10, ASP.NET Core Identity (cookie session) |
@@ -96,7 +103,7 @@ flowchart LR
             D --> B
         end
         migrate["migrate<br/>one-shot migration bundle"]
-        db[("PostgreSQL 17<br/>exclusion constraint")]
+        db[("PostgreSQL 17<br/>exclusion constraints")]
     end
     browser -->|"HTTP, session cookie"| web
     web --> A
@@ -131,11 +138,11 @@ Times are evaluated in Europe/Sarajevo and stored in UTC
 | R4 | Start at most 30 days ahead | Domain | Implemented |
 | R5 | Start at most 5 minutes in the past | Domain | Implemented |
 | R6 | No two overlapping Active reservations of one space | **Database** | Implemented |
-| R7 | No two overlapping Active reservations of one plate | – | **Not implemented** ([limitations](#known-limitations)) |
+| R7 | No two overlapping Active reservations of one plate | **Database** | Implemented |
 | R8 | Every started hour is billed in full; price stored at creation | Domain | Implemented |
 | R9 | Customer cancels until the start, admin at any time; twice is a conflict | Domain, database (`xmin`) | Implemented |
-| R10 | At most 10 Active future reservations per user | – | **Not implemented** |
-| R11 | Inactive spaces get no new reservations | Application | Implemented for spaces; lots cannot be deactivated |
+| R10 | At most 10 Active future reservations per user | Application (soft rule) | Implemented |
+| R11 | Inactive spaces get no new reservations | Application | Implemented for spaces; lot deactivation deferred |
 | R12 | A space with Active reservations that have not ended cannot be deactivated | Application | Implemented for spaces |
 | R13 | A new rate or new opening hours apply only to new reservations | Domain | Implemented |
 | R14 | Bosnia and Herzegovina plate format, normalized | Domain | Implemented |
@@ -167,6 +174,10 @@ EXCLUDE USING gist (
 - `btree_gist` lets the GiST index compare `space_id` with `=`.
 - `WHERE (status = 1)` makes it partial: a cancelled reservation blocks nothing.
 
+R7 works the same way: `AddReservationPlateOverlapConstraint` adds
+`ex_reservations_plate_no_overlap` with `plate WITH =` instead of `space_id WITH =`, so one car
+cannot hold two overlapping reservations in any lot.
+
 The service does not query for overlaps before the insert. Under the default READ COMMITTED
 isolation, a second overlapping insert waits for the first transaction and then fails.
 
@@ -196,10 +207,15 @@ sequenceDiagram
 3. **A given space** (`spaceId` in the body): `CreateReservationService.CreateAsync` throws
    `ReservationConflictException`. Any other database error is rethrown unchanged.
 4. **A lot** (`lotId` in the body): `CreateInLotAsync` treats the free spaces as candidates only.
-   On `23P01` it detaches the failed reservation and tries the next candidate, up to 10 inserts.
-   When none is left it throws `NoFreeSpaceException`.
-5. Both exceptions derive from `DomainConflictException`, which `ApiExceptionHandler` maps to
-   **409 Conflict** with a ProblemDetails body:
+   On a space overlap it detaches the failed reservation and tries the next candidate, up to 10
+   inserts. When none is left it throws `NoFreeSpaceException`.
+5. **A plate overlap** (`ex_reservations_plate_no_overlap`, matched the same way) throws
+   `PlateOverlapException` in both paths. The lot path stops there instead of trying the next
+   space, because every other space would fail for the same car.
+6. All three derive from `DomainConflictException`, which `ApiExceptionHandler` maps to
+   **409 Conflict** with a ProblemDetails body. Its `code` extension names the cause:
+   `space_taken` (R6, also a full lot), `plate_overlap` (R7) or `reservation_limit` (R10, which the
+   service checks with a count before the insert):
 
 ```json
 {
@@ -208,6 +224,7 @@ sequenceDiagram
   "status": 409,
   "detail": "Space 019ad0a4-6c1e-7a3b-9f2d-3e4c5b6a7e02 already has an active reservation that overlaps 2026-12-01T09:00:00.0000000+00:00 – 2026-12-01T10:30:00.0000000+00:00.",
   "instance": "/api/v1/reservations",
+  "code": "space_taken",
   "traceId": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00"
 }
 ```
@@ -222,7 +239,7 @@ reservation that is finally committed.
 | Test | What it shows |
 | --- | --- |
 | `ReservationOverlapConstraintTests` | The constraint rejects an overlap and allows touching intervals, cancelled rows and other spaces |
-| `ParallelReservationTests` | 20 simultaneous requests for one space: exactly 1 succeeds, 19 conflict, in 20 rounds; also staggered, many-space and by-lot scenarios |
+| `ParallelReservationTests` | 20 simultaneous requests for one space: exactly 1 succeeds, 19 conflict, in 20 rounds; also staggered, many-space and by-lot scenarios, and one plate in 20 lots |
 | `ParallelReservationHttpTests` | Two signed-in customers over HTTP: exactly one `201` and one `409` per round |
 
 The scenarios are described in [docs/testing.md](docs/testing.md#concurrency-tests).
@@ -560,15 +577,11 @@ run the API again.
 What the project does **not** do, or does only partly. Each item is a known gap, not a hidden
 one.
 
-**Business rules from the product brief that are not implemented**
+**Deferred from the product brief**
 
-- **R7, no overlap per plate.** The same plate can get two overlapping reservations in different
-  spaces or lots. Only the space constraint (R6) exists; the brief and ADR-002 describe a second
-  exclusion constraint on `plate`, which was never added.
-- **R10, at most 10 Active future reservations per user.** There is no limit per user.
-- **Deactivating a lot.** Only spaces can be deactivated (R11, R12). A lot has no active flag, so
-  a whole lot is taken out of service by deactivating its spaces. A space cannot be reactivated
-  through the API.
+- **Deactivating a lot (R11, R12), deferred in v1.0.0.** Only spaces can be deactivated. A lot has
+  no active flag, so a whole lot is taken out of service by deactivating its spaces, under the
+  same R12 check. A space cannot be reactivated through the API.
 
 **Behaviour to know about**
 
@@ -595,8 +608,6 @@ one.
 - **Availability reads the whole reservations table** instead of the constraint's index: 20 ms at
   50,000 rows, growing linearly with history ([docs/performance.md](docs/performance.md)).
 - **Offset pagination.** Pages shift when reservations are added between two page requests.
-- **`parking_spaces.lot_id` is nullable** in the schema. No code path creates a space without a
-  lot, but the database does not forbid it.
 
 **Out of scope by design** ([product brief](docs/product-brief.md#5-functional-scope)):
 payments, email or push notifications, email verification, check-in and no-show handling, guest
@@ -610,14 +621,10 @@ seeds demo data, and has no TLS, backups, monitoring or log shipping.
 
 In order of value:
 
-1. **R7:** add `ex_reservations_plate_no_overlap`, map its `23P01` to its own 409 by the
-   constraint name, stop the candidate loop on it, and test it in parallel like R6.
-2. **R10:** count the user's Active future reservations in `CreateReservationService`, documented
-   as a soft rule that two simultaneous requests can exceed by one.
-3. **Lot deactivation:** an active flag on the lot with the same R11 and R12 checks as a space.
-4. **Schema hardening:** `lot_id NOT NULL` and `CHECK` constraints such as `end_time > start_time`.
-5. **Forwarded headers** behind nginx with the proxy as a known proxy, so the rate limit is per
+1. **Lot deactivation:** an active flag on the lot with the same R11 and R12 checks as a space.
+2. **Schema hardening:** `CHECK` constraints such as `end_time > start_time`.
+3. **Forwarded headers** behind nginx with the proxy as a known proxy, so the rate limit is per
    client again.
-6. **Availability with the range operator,** so the query uses the existing GiST index.
-7. **Idempotency key** on reservation creation.
-8. **i18n** for local users ([D6](docs/decisions.md#d6-language-of-the-user-interface)).
+4. **Availability with the range operator,** so the query uses the existing GiST index.
+5. **Idempotency key** on reservation creation.
+6. **i18n** for local users ([D6](docs/decisions.md#d6-language-of-the-user-interface)).
