@@ -16,6 +16,9 @@ public sealed class CreateReservationService(
     /// <summary>Upper bound on inserts per lot request, so heavy contention cannot keep one request busy.</summary>
     public const int MaxAttempts = 10;
 
+    /// <summary>R10: Active reservations one user may hold that have not started yet.</summary>
+    public const int MaxUpcomingPerUser = 10;
+
     public async Task<Reservation> CreateAsync(
         Guid userId,
         Guid spaceId,
@@ -41,6 +44,7 @@ public sealed class CreateReservationService(
         }
 
         var reservation = Reservation.Create(lot, space, interval, licensePlate, userId, timeZone, clock);
+        await EnsureUnderLimitAsync(userId, cancellationToken);
         db.Reservations.Add(reservation);
 
         // No "is it free?" query first: it would race with a parallel request. The exclusion
@@ -81,6 +85,7 @@ public sealed class CreateReservationService(
 
         // Rules first: a broken rule is 422 even when the lot is full.
         Reservation.EnsureBookable(lot, interval, timeZone, clock);
+        await EnsureUnderLimitAsync(userId, cancellationToken);
 
         // Only a hint: a parallel request can take any of these before our insert.
         var blocking = db.Reservations.Where(Reservation.ActiveAndOverlapping(interval));
@@ -119,5 +124,20 @@ public sealed class CreateReservationService(
         }
 
         throw new NoFreeSpaceException(lotId, interval);
+    }
+
+    // A soft rule (product brief): parallel requests of one user can all pass the count. Unlike
+    // R6 and R7, going over by a few harms nobody, so it is not worth a lock.
+    private async Task EnsureUnderLimitAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var now = clock.GetUtcNow().UtcDateTime;
+        var upcoming = await db.Reservations.CountAsync(
+            r => r.UserId == userId && r.Status == ReservationStatus.Active && r.StartTime > now,
+            cancellationToken);
+
+        if (upcoming >= MaxUpcomingPerUser)
+        {
+            throw new ReservationLimitException(MaxUpcomingPerUser);
+        }
     }
 }

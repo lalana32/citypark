@@ -29,6 +29,12 @@ public sealed class CreateReservationServiceTests(PostgresFixture fixture) : ICl
     // "Now" is 08:00 local on the same day: every test interval is in the future and within the horizon.
     private static FakeTimeProvider Clock => new(Local(8));
 
+    // xUnit creates the class once per test, so this is one user per test: tests cannot add up to R10.
+    // Lazy, so two parallel calls in one test still share the user.
+    private readonly Lazy<Task<Guid>> _user = new(fixture.AddUserAsync);
+
+    private Task<Guid> UserAsync() => _user.Value;
+
     [Fact]
     public async Task ValidRequest_SavesActiveReservationWithSnapshottedPrice()
     {
@@ -44,7 +50,7 @@ public sealed class CreateReservationServiceTests(PostgresFixture fixture) : ICl
         Assert.Equal(4.00m, saved.Price); // 90 minutes are two started hours at 2.00 BAM (R8).
         Assert.Equal("BAM", saved.Currency);
         Assert.Equal(new TimeInterval(Local(10), Local(11, 30)), saved.Interval);
-        Assert.Equal(fixture.UserId, saved.UserId);
+        Assert.Equal(await UserAsync(), saved.UserId);
     }
 
     [Fact]
@@ -135,6 +141,63 @@ public sealed class CreateReservationServiceTests(PostgresFixture fixture) : ICl
         Assert.Equal(new LicensePlate(plate), ex.Plate);
         Assert.IsType<DbUpdateException>(ex.InnerException);
         Assert.Equal(0, await CountAsync(second.Id, ct));
+    }
+
+    [Fact]
+    public async Task TenthUpcomingReservation_IsAccepted_EleventhIsRejected()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var lot = await AddLotAsync(ct);
+        await BookHalfHoursAsync(Space(lot, "A-1"), count: 9, ct);
+
+        await CreateAsync(Space(lot, "A-2").Id, Local(10), Local(11), ct);
+        var ex = await Assert.ThrowsAsync<ReservationLimitException>(() =>
+            CreateAsync(Space(lot, "A-2").Id, Local(11), Local(12), ct));
+
+        Assert.Equal(CreateReservationService.MaxUpcomingPerUser, ex.Limit);
+        Assert.Equal(10, await CountInLotAsync(lot, ct));
+    }
+
+    [Fact]
+    public async Task CancelledAndStartedReservations_DoNotCountTowardTheLimit()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var lot = await AddLotAsync(ct);
+        await BookHalfHoursAsync(Space(lot, "A-1"), count: 9, ct);
+
+        // Starts exactly "now" (08:00): already in progress, so no longer upcoming.
+        await CreateAsync(Space(lot, "A-2").Id, Local(8), Local(9), ct);
+        var cancelled = await CreateAsync(Space(lot, "A-2").Id, Local(10), Local(11), ct);
+        await CancelAsync(cancelled.Id, ct);
+
+        var tenthUpcoming = await CreateAsync(Space(lot, "A-3").Id, Local(10), Local(11), ct);
+
+        Assert.Equal(ReservationStatus.Active, tenthUpcoming.Status);
+    }
+
+    [Fact]
+    public async Task InLot_LimitReached_ThrowsLimitAndWritesNothing()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var lot = await AddLotAsync(ct);
+        await BookHalfHoursAsync(Space(lot, "A-1"), count: 10, ct);
+
+        await Assert.ThrowsAsync<ReservationLimitException>(() => CreateInLotAsync(lot.Id, Local(10), Local(11), ct));
+
+        Assert.Equal(10, await CountInLotAsync(lot, ct));
+    }
+
+    // Order of checks: a broken rule (422) wins over the limit (409), as it wins over a taken space.
+    [Fact]
+    public async Task LimitReached_AndDomainRuleBroken_ThrowsTheValidationError()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var lot = await AddLotAsync(ct);
+        await BookHalfHoursAsync(Space(lot, "A-1"), count: 10, ct);
+
+        // Off the 15-minute grid (R1). ThrowsAsync checks the exact type.
+        await Assert.ThrowsAsync<DomainException>(() => CreateAsync(Space(lot, "A-2").Id, Local(10, 10), Local(11, 10), ct));
+        await Assert.ThrowsAsync<DomainException>(() => CreateInLotAsync(lot.Id, Local(10, 10), Local(11, 10), ct));
     }
 
     [Theory]
@@ -309,7 +372,7 @@ public sealed class CreateReservationServiceTests(PostgresFixture fixture) : ICl
     {
         await using var db = fixture.CreateDbContext();
         var service = new CreateReservationService(db, new PostgresDatabaseErrors(), Clock, Sarajevo);
-        return await service.CreateInLotAsync(fixture.UserId, lotId, start, end, plate ?? TestPlates.Next(), ct);
+        return await service.CreateInLotAsync(await UserAsync(), lotId, start, end, plate ?? TestPlates.Next(), ct);
     }
 
     private async Task<int> CountInLotAsync(ParkingLot lot, CancellationToken ct)
@@ -330,7 +393,7 @@ public sealed class CreateReservationServiceTests(PostgresFixture fixture) : ICl
     {
         await using var db = fixture.CreateDbContext();
         var service = new CreateReservationService(db, new PostgresDatabaseErrors(), Clock, Sarajevo);
-        return await service.CreateAsync(userId ?? fixture.UserId, spaceId, start, end, plate ?? TestPlates.Next(), ct);
+        return await service.CreateAsync(userId ?? await UserAsync(), spaceId, start, end, plate ?? TestPlates.Next(), ct);
     }
 
     private async Task<Exception?> TryCreateAsync(Guid spaceId, DateTimeOffset start, DateTimeOffset end, CancellationToken ct)
@@ -344,6 +407,23 @@ public sealed class CreateReservationServiceTests(PostgresFixture fixture) : ICl
         {
             return ex;
         }
+    }
+
+    // Back-to-back half hours from 10:00 on one space, all upcoming at 08:00.
+    private async Task BookHalfHoursAsync(ParkingSpace space, int count, CancellationToken ct)
+    {
+        for (var n = 0; n < count; n++)
+        {
+            var start = Local(10).AddMinutes(30 * n);
+            await CreateAsync(space.Id, start, start.AddMinutes(30), ct);
+        }
+    }
+
+    private async Task CancelAsync(Guid reservationId, CancellationToken ct)
+    {
+        await using var db = fixture.CreateDbContext();
+        var admin = new Actor(Guid.CreateVersion7(), CancellationActor.Administrator);
+        await new CancelReservationService(db, Clock).CancelAsync(reservationId, admin, ct);
     }
 
     private async Task<int> CountAsync(Guid spaceId, CancellationToken ct)
