@@ -126,6 +126,76 @@
   gap: 8px;
 }
 
+.admin-footnote {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* Same badge look as the cards on My reservations. */
+.admin-table .badge {
+  padding: 4px 10px;
+  border: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.admin-table .badge-Upcoming {
+  background: #eef3ff;
+  color: #2a4bb3;
+}
+
+.admin-table .badge-InProgress {
+  background: #e7f6ec;
+  color: #17693a;
+}
+
+.admin-table .badge-Finished {
+  background: #f1f3f7;
+  color: #4a5470;
+}
+
+.admin-table .badge-Cancelled {
+  background: #fdecea;
+  color: #a3241a;
+}
+
+.admin-table .cancel-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 260px;
+  font-size: 14px;
+}
+
+.admin-table .cancel-confirm span {
+  flex-basis: 100%;
+  color: var(--muted);
+}
+
+.admin-table .cancel-confirm-yes {
+  background: #b42318;
+  color: #ffffff;
+}
+
+.admin-table .cancel-confirm-yes:hover {
+  background: #912018;
+}
+
+.admin-table .cancel-confirm .site-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.admin-table .cancel-error {
+  margin: 8px 0 0;
+  color: #b42318;
+  font-size: 14px;
+}
+
 .admin-pager nav {
   display: flex;
   align-items: center;

@@ -31,22 +31,36 @@ export function CancelAction({ reservationId, cancellable, cancel }: CancelProps
   return (
     <>
       {cancellable && !confirming && (
-        <button type="button" onClick={() => setConfirming(true)}>
+        <button type="button" className="site-btn site-btn-secondary site-btn-small" onClick={() => setConfirming(true)}>
           Cancel
         </button>
       )}
       {cancellable && confirming && (
-        <div role="group" aria-label="Confirm cancellation">
+        <div role="group" aria-label="Confirm cancellation" className="cancel-confirm">
           <span>Cancel this reservation?</span>
-          <button type="button" disabled={cancel.isPending} onClick={confirm}>
+          <button
+            type="button"
+            className="site-btn site-btn-small cancel-confirm-yes"
+            disabled={cancel.isPending}
+            onClick={confirm}
+          >
             {cancel.isPending ? 'Cancelling…' : 'Yes, cancel'}
           </button>
-          <button type="button" disabled={cancel.isPending} onClick={() => setConfirming(false)}>
+          <button
+            type="button"
+            className="site-btn site-btn-secondary site-btn-small"
+            disabled={cancel.isPending}
+            onClick={() => setConfirming(false)}
+          >
             Keep it
           </button>
         </div>
       )}
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <p role="alert" className="cancel-error">
+          {error}
+        </p>
+      )}
     </>
   )
 }
